@@ -38,7 +38,7 @@ canvas#game{width:100%;height:100%;display:block}
 #cb{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);font-size:16px;font-weight:800;color:#5eead4;opacity:0;pointer-events:none;z-index:15;transition:opacity .2s}
 #cb.show{opacity:1}
 #stk{position:absolute;top:76px;right:20px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.25);pointer-events:none}
-.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;z-index:20;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:20px}
 #ss{background:linear-gradient(180deg,#16213e 0%,#1a1a2e 50%,#0f3460 100%)}
 #ss h1{font-size:40px;font-weight:900;color:#fff;text-shadow:0 0 40px rgba(255,215,0,0.25)}
 #ss .sub{font-size:12px;font-weight:700;color:rgba(255,255,255,0.3);margin-bottom:40px;letter-spacing:5px;text-transform:uppercase}
@@ -50,7 +50,7 @@ canvas#game{width:100%;height:100%;display:block}
 .hint{margin-top:20px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.2)}
 
 /* death screen */
-#ds{display:none;background:rgba(10,10,20,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:auto;padding:0 24px}
+#ds{display:none;background:rgba(10,10,20,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:auto;padding:20px 24px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 #ds.show{display:flex}
 .ds-score-wrap{margin:8px 0}
 .ds-score{font-size:80px;font-weight:900;color:#fff;line-height:1}
@@ -104,7 +104,7 @@ canvas#game{width:100%;height:100%;display:block}
 .btn-skip-nn{background:none;border:none;color:rgba(255,255,255,0.25);font-family:'Nunito',sans-serif;font-size:11px;cursor:pointer;margin-top:12px}
 
 /* leaderboard overlay */
-#lb-modal{display:none;position:absolute;inset:0;background:rgba(10,10,20,0.96);z-index:32;flex-direction:column;align-items:center;pointer-events:auto;padding:20px;overflow-y:auto}
+#lb-modal{display:none;position:absolute;inset:0;background:rgba(10,10,20,0.96);z-index:32;flex-direction:column;align-items:center;pointer-events:auto;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 #lb-modal.show{display:flex}
 #lb-modal h3{color:#fff;font-size:20px;font-weight:900;margin:10px 0 4px}
 .lb-tabs{display:flex;gap:6px;margin-bottom:14px}
@@ -161,8 +161,8 @@ canvas#game{width:100%;height:100%;display:block}
 <h4 id="wb-title">Secure your account</h4>
 <p id="wb-desc">Connect wallet to play anywhere and never lose progress</p>
 <div id="wb-options" style="display:flex;flex-direction:row;gap:6px;width:100%;justify-content:center">
-<button class="bw wb-opt" onclick="connectFreighter()" style="flex:1;font-size:11px;padding:10px 4px">Freighter</button>
-<button class="bw wb-opt" onclick="connectAlbedo()" style="flex:1;font-size:11px;padding:10px 4px;background:#0091ff;color:#fff">Albedo</button>
+<button class="bw wb-opt" onclick="connectFreighter()" id="wb-freighter" style="flex:1;font-size:11px;padding:10px 4px">Freighter</button>
+<button class="bw wb-opt" onclick="connectAlbedo()" id="wb-albedo" style="flex:1;font-size:11px;padding:10px 4px;background:#0091ff;color:#fff">Albedo</button>
 <button class="bw wb-opt" onclick="connectWC()" style="flex:1;font-size:11px;padding:10px 4px;background:#3396ff;color:#fff">Lobstr/QR</button>
 </div>
 <div id="wb-status" style="display:none;text-align:center;padding:8px;font-size:13px;color:#5eead4"></div>
@@ -293,9 +293,10 @@ const P={sky1:'#16213e',sky2:'#0f3460',sky3:'#1a1a2e',gnd:'#0d1b2a',gndT:'#1b283
 
 // ========== API CLIENT ==========
 const API_BASE='';
-let userToken=null,userNickname=null,userWallet=null,nickAsked=false;var blobiBal=0;
+let userToken=null,userNickname=null,userWallet=null,nickAsked=false,walletMethod=null;var blobiBal=0;
 function fmtBlobi(n){if(n>=1000000)return(n/1000000).toFixed(1).replace(".0","")+"M";if(n>=10000)return(n/1000).toFixed(1).replace(".0","")+"K";if(n>=1)return Math.floor(n).toLocaleString();if(n>0.01)return n.toFixed(2);if(n>0)return"<0.01";return"0"}
 var hasTrustline=false;
+
 
 var lastBalFetch=0;
 async function checkTrustline(){
@@ -332,14 +333,41 @@ try{
 var xdrRes=await apiCall("POST","/rewards/trustline-xdr",{publicKey:userWallet});
 if(xdrRes.error){btn.textContent=xdrRes.error;setTimeout(function(){btn.disabled=false;btn.textContent="Add BLOBI Token"},2000);return}
 var signed=null;
-var isFreighterAvail=false;
-if(window._freighter&&window._freighter.signTransaction){
+var tryOrder=walletMethod==="albedo"?["albedo","freighter","wc"]:walletMethod==="wc"?["wc","freighter","albedo"]:walletMethod==="freighter"?["freighter","albedo","wc"]:[];
+for(var ti=0;ti<tryOrder.length;ti++){
+if(signed)break;
+if(tryOrder[ti]==="freighter"&&window._freighter&&window._freighter.signTransaction){
 try{var conn=await Promise.race([window._freighter.isConnected(),new Promise(function(_,rej){setTimeout(function(){rej()},2000)})]);
-if(conn&&(conn===true||conn.isConnected))isFreighterAvail=true}catch(e){}}
-if(isFreighterAvail){
-try{var sigResult=await window._freighter.signTransaction(xdrRes.xdr,{networkPassphrase:"Public Global Stellar Network ; September 2015"});signed=typeof sigResult==="string"?sigResult:sigResult.signedTxXdr||sigResult.xdr||sigResult}catch(e){console.warn("Freighter sign error:",e)}}
-if(!signed&&window._albedo){
-try{var albRes=await Promise.race([window._albedo.tx({xdr:xdrRes.xdr,network:"public"}),new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},5000)})]);signed=albRes.signed_envelope_xdr}catch(e){console.warn("Albedo sign error:",e)}}
+if(conn&&(conn===true||conn.isConnected)){
+var sigResult=await window._freighter.signTransaction(xdrRes.xdr,{networkPassphrase:"Public Global Stellar Network ; September 2015"});signed=typeof sigResult==="string"?sigResult:sigResult.signedTxXdr||sigResult.xdr||sigResult}}catch(e){console.warn("Freighter sign:",e)}}
+if(tryOrder[ti]==="albedo"&&!signed&&window._albedo){
+try{var albRes=await Promise.race([window._albedo.tx({xdr:xdrRes.xdr,network:"public"}),new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},60000)})]);
+console.log("Albedo result:",JSON.stringify(albRes));
+if(albRes.signed_envelope_xdr){signed=albRes.signed_envelope_xdr}
+else if(albRes.tx_hash){
+hasTrustline=true;btn.textContent="BLOBI Added!";btn.style.background="#5eead4";
+document.getElementById("tl-prompt").style.display="none";
+fetch("/api/rewards/balance/"+userWallet).then(function(r){return r.json()}).then(function(d){blobiBal=parseFloat(d.balance||"0");updateUserDisplay()}).catch(function(){});
+return}
+}catch(e){console.warn("Albedo sign:",e)}}
+if(tryOrder[ti]==="wc"&&!signed&&window._wcClient){
+try{
+var wcSessions=window._wcClient.session.getAll();
+if(wcSessions.length>0){
+var wcSession=wcSessions[wcSessions.length-1];
+var wcResult=await Promise.race([
+window._wcClient.request({topic:wcSession.topic,chainId:'stellar:pubnet',request:{method:'stellar_signAndSubmitXDR',params:{xdr:xdrRes.xdr}}}),
+new Promise(function(_,rej){setTimeout(function(){rej(new Error('wc_timeout'))},30000)})
+]);
+if(wcResult&&(wcResult.hash||wcResult.tx_hash||wcResult.status==='success')){
+hasTrustline=true;
+btn.textContent="BLOBI Added!";btn.style.background="#5eead4";
+document.getElementById("tl-prompt").style.display="none";
+fetch("/api/rewards/balance/"+userWallet).then(function(r){return r.json()}).then(function(d){blobiBal=parseFloat(d.balance||"0");updateUserDisplay()}).catch(function(){});
+return}
+if(typeof wcResult==='string')signed=wcResult;
+}}catch(e){console.warn("WC sign error:",e)}}
+}
 if(!signed){
 btn.style.display="none";
 var info=document.getElementById("tl-prompt");
@@ -415,10 +443,10 @@ if(score<5&&score>0)return lastFlavor=pick(['Every legend starts somewhere.','Bl
 return lastFlavor=pick(['Another day, another leap.','Blobi never stops. Blobi only pauses.','The spikes won this round.','One more try. Blobi always says one more.'])}
 
 // Persistence via localStorage + cookie backup
-function setCookie(k,v,days){var d=new Date();d.setTime(d.getTime()+(days||365)*86400000);document.cookie=k+'='+encodeURIComponent(v)+';expires='+d.toUTCString()+';path=/;SameSite=Lax'}
+function setCookie(k,v,days){var d=new Date();d.setTime(d.getTime()+(days||365)*86400000);document.cookie=k+'='+encodeURIComponent(v)+';expires='+d.toUTCString()+';path=/;SameSite=Lax;Secure'}
 function getCookie(k){var m=document.cookie.match(new RegExp('(^| )'+k+'=([^;]+)'));return m?decodeURIComponent(m[2]):null}
 function saveData(){
-try{var d=JSON.stringify({best,totalG,walletOn,userToken,userNickname,userWallet,nickAsked});
+try{var d=JSON.stringify({best,totalG,walletOn,userToken,userNickname,userWallet,nickAsked,walletMethod});
 localStorage.setItem('blobi_v1',d);
 // cookie backup for mobile
 if(userToken)setCookie('blobi_token',userToken);
@@ -427,7 +455,7 @@ if(userWallet)setCookie('blobi_wallet',userWallet);
 }catch(e){}}
 function loadData(){try{
 var d=JSON.parse(localStorage.getItem('blobi_v1'));
-if(d){best=d.best||0;totalG=d.totalG||0;walletOn=d.walletOn||false;userToken=d.userToken||null;userNickname=d.userNickname||null;userWallet=d.userWallet||null;nickAsked=d.nickAsked||false}
+if(d){best=d.best||0;totalG=d.totalG||0;walletOn=d.walletOn||false;userToken=d.userToken||null;userNickname=d.userNickname||null;userWallet=d.userWallet||null;nickAsked=d.nickAsked||false;walletMethod=d.walletMethod||null}
 // Recover from cookie if localStorage lost
 if(!userToken&&getCookie('blobi_token')){
 userToken=getCookie('blobi_token');
@@ -501,7 +529,7 @@ return true}return false}
 async function verifyWallet(pubKey,signature){
 var v=await apiCall('POST','/wallet/verify',{publicKey:pubKey,signature:signature});
 if(v.error){wbStatus(v.error);setTimeout(wbReset,2000);return false}
-userWallet=pubKey;walletOn=true;saveData();
+userWallet=pubKey;walletOn=true;walletMethod="freighter";saveData();
 showWalletConnected(pubKey);return true}
 
 // --- FREIGHTER ---
@@ -516,8 +544,7 @@ var def=mod.default||mod;
 if(def&&typeof def==='object'){for(var k in def){if(typeof def[k]==='function')window._freighter[k]=def[k]}}
 }catch(e){}}
 if(!window._freighter||!window._freighter.requestAccess){
-wbStatus('Freighter not found');
-setTimeout(function(){window.open('https://freighter.app','_blank');wbReset()},1500);return}
+wbStatus('Freighter is not connected');setTimeout(wbReset,2000);return}
 wbStatus('Checking Freighter...');
 try{
 var fr=window._freighter;
@@ -526,9 +553,7 @@ fr.isConnected(),
 new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'))},3000)})
 ]);
 if(!connected||(typeof connected==='object'&&!connected.isConnected)){
-wbStatus('Installing Freighter...');
-window.open('https://freighter.app','_blank');
-setTimeout(wbReset,2000);return}
+wbStatus('Freighter is not connected');setTimeout(wbReset,2000);return}
 wbStatus('Connecting Freighter...');
 await fr.requestAccess();
 var addrResult=await fr.getAddress();
@@ -540,22 +565,28 @@ var signResult=await fr.signMessage('blobi-leap:'+ch.challenge);
 var sig=typeof signResult==='string'?signResult:signResult.signedMessage||signResult.signature||'';
 await verifyWallet(pubKey,sig);
 }catch(e){console.warn('Freighter:',e);
-if(e.message==='timeout'){wbStatus('Installing Freighter...');window.open('https://freighter.app','_blank');setTimeout(wbReset,2000)}
+if(e.message==='timeout'){wbStatus('Freighter is not connected');setTimeout(wbReset,2000)}
 else{wbStatus('Cancelled');setTimeout(wbReset,1500)}}}
 
 // --- ALBEDO ---
+var _albedoWaiting=false;
+document.addEventListener('visibilitychange',function(){
+if(document.visibilityState==='visible'&&_albedoWaiting){
+setTimeout(function(){if(_albedoWaiting){_albedoWaiting=false;wbStatus('Albedo not responding');setTimeout(wbReset,2000)}},3000)}});
+
 async function connectAlbedo(){
 if(wbNeedName())return;
-wbStatus('Opening Albedo...');
+_albedoWaiting=true;
+if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){wbStatus('Opening Albedo... (if stuck, try Lobstr/QR)')}else{wbStatus('Opening Albedo...')};
 try{
-var pubResult=await window._albedo.publicKey({require_existing:true});
+var pubResult=await Promise.race([window._albedo.publicKey({require_existing:true}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'))},10000)})]);
 var pubKey=pubResult.pubkey;
 if(!pubKey||!pubKey.startsWith('G')){wbStatus('Could not get address');setTimeout(wbReset,2000);return}
 var ch=await apiCall('POST','/wallet/challenge',{publicKey:pubKey});
 if(ch.error){wbStatus(ch.error);setTimeout(wbReset,2000);return}
 var signResult=await window._albedo.signMessage({message:'blobi-leap:'+ch.challenge,pubkey:pubKey});
-await verifyWallet(pubKey,signResult.message_signature);
-}catch(e){console.warn('Albedo:',e);wbStatus('Cancelled');setTimeout(wbReset,1500)}}
+_albedoWaiting=false;walletMethod="albedo";await verifyWallet(pubKey,signResult.message_signature);
+}catch(e){console.warn('Albedo:',e);if(e.message==='timeout'){wbStatus('Albedo not responding. Try Lobstr/QR instead.')}else{wbStatus('Cancelled')}setTimeout(wbReset,3000)}}
 
 // --- WALLETCONNECT ---
 async function connectWC(){
@@ -580,14 +611,18 @@ var client=window._wcClient;
 var modal=window._wcModal;
 wbStatus('Scan QR with your wallet...');
 
+// Auto-reset after 30s regardless
+var wcTimeout=setTimeout(function(){try{modal.closeModal()}catch(x){}wbStatus('Timed out');setTimeout(wbReset,2000)},30000);
+
 // Connect
 var {uri,approval}=await client.connect({
 requiredNamespaces:{stellar:{methods:['stellar_signMessage','stellar_signAndSubmitXDR'],chains:['stellar:pubnet'],events:[]}}});
 
 if(uri){modal.openModal({uri})}
 
-var session=await approval();
-modal.closeModal();
+var session;
+try{session=await approval();clearTimeout(wcTimeout)}catch(e){clearTimeout(wcTimeout);throw e}
+try{modal.closeModal()}catch(e){}
 
 // Extract public key from session
 var accounts=session.namespaces.stellar.accounts;
@@ -675,13 +710,20 @@ btn.disabled=true;btn.textContent='Claiming...';
 try{
 var res=await apiCall('POST','/cards/claim',{effect:pendingClaim});
 if(res.error){
+if(res.error.indexOf('Already claimed')>=0){
+claimedCards[pendingClaim]=true;
+localStorage.setItem('blobi_claimed',JSON.stringify(claimedCards));
+btn.textContent='Already collected';btn.style.background='#5eead4';btn.style.margin='0 auto';btn.style.display='block';
+var laterBtn2=btn.parentElement.querySelector('.btn-skip');if(laterBtn2)laterBtn2.style.display='none';
+return}
 btn.textContent=res.error;
 setTimeout(function(){btn.disabled=false;btn.textContent='Claim Card'},2000);
 return}
 claimedCards[pendingClaim]=res.id;
 localStorage.setItem('blobi_claimed',JSON.stringify(claimedCards));
 btn.textContent=res.id+' claimed!';
-btn.style.background='#ffd700';
+btn.style.background='#ffd700';btn.style.margin='0 auto';btn.style.display='block';
+var laterBtn=btn.parentElement.querySelector('.btn-skip');if(laterBtn)laterBtn.style.display='none';
 document.getElementById('cc-desc').innerHTML='<a href="/card/'+res.id+'" style="color:#5eead4;text-decoration:underline">View your card</a>';
 }catch(e){
 btn.textContent='Error';
@@ -750,11 +792,11 @@ try{var mod=await import('https://cdn.jsdelivr.net/npm/@stellar/freighter-api/+e
 window._freighter={};var def=mod.default||mod;
 if(def&&typeof def==='object'){for(var k in def){if(typeof def[k]==='function')window._freighter[k]=def[k]}}}catch(e){}}
 if(!window._freighter||!window._freighter.requestAccess){
-err.textContent='Freighter not found. Install extension first.';return}
+recoverReset();err.textContent='Freighter not found. Install at freighter.app';window.open('https://freighter.app','_blank');return}
 recoverStatus('Connecting Freighter...');
 var connected=await Promise.race([window._freighter.isConnected(),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'))},3000)})]);
 if(!connected||(typeof connected==='object'&&!connected.isConnected)){
-err.textContent='Freighter not detected. Install or open extension.';recoverReset();return}
+recoverReset();err.textContent='Freighter not found. Install at freighter.app';window.open('https://freighter.app','_blank');return}
 await window._freighter.requestAccess();
 var addr=await window._freighter.getAddress();
 pubKey=typeof addr==='string'?addr:addr.address||addr.publicKey;
@@ -780,8 +822,10 @@ recoverStatus('Scan QR with your wallet...');
 var wc=window._wcClient;
 var conn=await wc.connect({requiredNamespaces:{stellar:{methods:['stellar_signMessage'],chains:['stellar:pubnet'],events:[]}}});
 if(conn.uri)window._wcModal.openModal({uri:conn.uri});
-var session=await conn.approval();
-window._wcModal.closeModal();
+var rcTimeout=setTimeout(function(){try{window._wcModal.closeModal()}catch(x){}recoverReset();document.getElementById('nn-err').textContent='Timed out. Try again.'},30000);
+var session;
+try{session=await conn.approval();clearTimeout(rcTimeout)}catch(e){clearTimeout(rcTimeout);throw e}
+try{window._wcModal.closeModal()}catch(x){}
 var accounts=session.namespaces.stellar.accounts;
 if(accounts&&accounts.length)pubKey=accounts[0].split(':')[2];
 try{await wc.disconnect({topic:session.topic,reason:{code:6000,message:'done'}})}catch(e){}
@@ -797,7 +841,7 @@ err.textContent=res.error;recoverReset();return}
 
 // Success
 userToken=res.token;userNickname=res.user.nickname;userWallet=res.user.wallet;
-walletOn=true;nickAsked=true;saveData();
+walletOn=true;walletMethod=method;nickAsked=true;saveData();
 document.getElementById('nn-modal').classList.remove('show');
 updateUserDisplay();
 
@@ -1582,9 +1626,21 @@ el.innerHTML=line1+(line2?'<br><span style="font-size:10px;color:rgba(255,255,25
 if(userNickname&&userCardCount===0)fetch('/api/cards?owner='+encodeURIComponent(userNickname)).then(function(r){return r.json()}).then(function(d){if(d&&d.cards)userCardCount=d.cards.length;if(userCardCount>0)updateUserDisplay()}).catch(function(){})}
 updateUserDisplay();
 loop();
-document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+document.addEventListener('touchmove',function(e){if(e.target.closest('#ds')||e.target.closest('#lb-modal')||e.target.closest('#nn-modal'))return;e.preventDefault()},{passive:false});
 </script>
 <script type="module">
+// Preload WalletConnect for all devices
+if(true){
+try{
+var wcMod=await import('https://esm.sh/@walletconnect/sign-client@2');
+var modalMod=await import('https://esm.sh/@walletconnect/modal@2');
+window._wcClient=await wcMod.SignClient.init({
+projectId:'7796b203b428af9f5986f995902f1113',
+metadata:{name:'Blobi Leap',description:'Casual runner on Stellar',url:'https://blobileap.com',icons:[]}});
+window._wcModal=new modalMod.WalletConnectModal({projectId:'7796b203b428af9f5986f995902f1113',chains:['stellar:pubnet'],themeMode:'dark'});
+console.log('WalletConnect preloaded');
+}catch(e){console.warn('WC preload:',e)}}
+
 // Freighter
 try{
 const mod=await import('https://cdn.jsdelivr.net/npm/@stellar/freighter-api/+esm');
