@@ -9,6 +9,7 @@ const scoreRoutes = require('./routes/scores');
 const leaderboardRoutes = require('./routes/leaderboard');
 const walletRoutes = require('./routes/wallet');
 const cardRoutes = require('./routes/cards');
+const rewardsRoutes = require('./routes/rewards');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -25,6 +26,7 @@ app.use('/api/scores', scoreRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/cards', cardRoutes);
+app.use('/api/rewards', rewardsRoutes);
 
 // Serve card verify page
 app.get('/card/:id', (req, res) => {

@@ -165,8 +165,12 @@ if (cmd === '/give') {
   return send('🎁 Gave <b>' + p[0].toUpperCase() + '</b> to @' + p[1]);
 }
 
+if (cmd === '/rewards') return handleRewards();
+if (cmd === '/send_rewards') return handleSendRewards();
+if (cmd === '/hot_balance') return handleHotBalance();
+
 if (cmd === '/help' || cmd === '/start') {
-  return send('🟢 <b>Blobi Leap Admin</b>\n\n📊 /stats\n🏆 /top\n📅 /today\n👤 /user [name]\n🕐 /recent\n🔧 /health\n🚨 /errors\n🔨 /ban [name]\n✅ /unban [name]\n✏️ /rename [old] [new]\n🗑 /delscore [id]\n📢 /announce [msg]\n\n🃏 <b>Cards</b>\n/mint [effect] [count]\n/cards [effect]\n/give [card_id] [nickname]');
+  return send('🟢 <b>Blobi Leap Admin</b>\n\n📊 /stats\n🏆 /top\n📅 /today\n👤 /user [name]\n🕐 /recent\n🔧 /health\n🚨 /errors\n🔨 /ban [name]\n✅ /unban [name]\n✏️ /rename [old] [new]\n🗑 /delscore [id]\n📢 /announce [msg]\n\n🃏 <b>Cards</b>\n/mint [effect] [count]\n/cards [effect]\n/give [card_id] [nickname]\n\n💰 <b>Rewards</b>\n/rewards — preview\n/send_rewards — distribute\n/hot_balance — check wallet');
 }
 
   } catch (e) { console.error('Bot error:', e); return send('❌ ' + e.message); }
@@ -189,3 +193,93 @@ pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS banned BOOLEAN DEFAULT fa
 console.log('Blobi bot started');
 send('🟢 <b>Blobi Leap bot restarted</b>');
 poll();
+
+// ========== REWARD SYSTEM ==========
+const distribute = require('./distribute');
+
+// /rewards - preview
+async function handleRewards(chatId) {
+  try {
+    const preview = await distribute.previewRewards();
+    let msg = '📊 <b>Weekly Rewards Preview</b>\n\n';
+    if (preview.eligible.length === 0) {
+      msg += 'No eligible players this week.\n';
+    } else {
+      preview.eligible.forEach(function(p) {
+        msg += '#' + p.rank + ' <b>' + p.nickname + '</b> — ' + p.score + 'pts — ' + p.amount + ' BLOBI ✓\n';
+      });
+    }
+    if (preview.skipped.length > 0) {
+      msg += '\n⏭ Skipped:\n';
+      preview.skipped.slice(0, 5).forEach(function(p) {
+        msg += p.nickname + ' — ' + p.score + 'pts (' + p.reason + ')\n';
+      });
+    }
+    msg += '\n💰 Total: ' + preview.totalNeeded + ' BLOBI';
+    msg += '\n🏦 Hot wallet: ' + Math.floor(preview.hotBalance).toLocaleString() + ' BLOBI';
+    send(msg);
+  } catch (e) { send('Error: ' + e.message); }
+}
+
+// /send_rewards - manual send
+async function handleSendRewards(chatId) {
+  try {
+    send('⏳ Sending rewards...');
+    const results = await distribute.sendRewards();
+    let msg = '📤 <b>Rewards Sent</b>\n\n';
+    let totalSent = 0;
+    results.forEach(function(r) {
+      if (r.status === 'sent') {
+        msg += '✅ ' + r.nickname + ' #' + r.rank + ': ' + r.amount + ' BLOBI\n';
+        totalSent += parseFloat(r.amount);
+      } else {
+        msg += '⏭ ' + r.nickname + ': ' + r.status + '\n';
+      }
+    });
+    msg += '\n💰 Total sent: ' + totalSent + ' BLOBI';
+    const bal = await distribute.getHotBalance();
+    msg += '\n🏦 Hot wallet remaining: ' + Math.floor(bal).toLocaleString() + ' BLOBI';
+    send(msg);
+  } catch (e) { send('❌ Send failed: ' + e.message); }
+}
+
+// /hot_balance - check hot wallet
+async function handleHotBalance(chatId) {
+  try {
+    const bal = await distribute.getHotBalance();
+    send('🏦 Hot wallet: <b>' + Math.floor(bal).toLocaleString() + ' BLOBI</b>');
+  } catch (e) { send('Error: ' + e.message); }
+}
+
+// Auto weekly rewards - every Sunday 00:00 UTC
+function scheduleWeeklyRewards() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCDate(now.getUTCDate() + (7 - now.getUTCDay()) % 7);
+  next.setUTCHours(0, 0, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 7);
+  const delay = next.getTime() - now.getTime();
+  console.log('Next rewards: ' + next.toISOString() + ' (in ' + Math.round(delay / 3600000) + 'h)');
+  setTimeout(async function() {
+    try {
+      send('⏰ <b>Auto weekly rewards starting...</b>');
+      const results = await distribute.sendRewards();
+      let msg = '🏆 <b>Weekly Rewards Auto-Distributed</b>\n\n';
+      let totalSent = 0;
+      results.forEach(function(r) {
+        if (r.status === 'sent') {
+          msg += '✅ ' + r.nickname + ' #' + r.rank + ': ' + r.amount + ' BLOBI\n';
+          totalSent += parseFloat(r.amount);
+        } else {
+          msg += '⏭ ' + r.nickname + ': ' + r.status + '\n';
+        }
+      });
+      msg += '\n💰 Total: ' + totalSent + ' BLOBI';
+      const bal = await distribute.getHotBalance();
+      msg += '\n🏦 Remaining: ' + Math.floor(bal).toLocaleString() + ' BLOBI';
+      send(msg);
+    } catch (e) { send('❌ Auto rewards failed: ' + e.message); }
+    scheduleWeeklyRewards();
+  }, delay);
+}
+scheduleWeeklyRewards();

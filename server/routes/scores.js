@@ -30,7 +30,14 @@ router.post('/', authRequired, async (req, res) => {
     const rankQ = await pool.query(
       'SELECT COUNT(*)+1 as rank FROM users WHERE best_score > (SELECT best_score FROM users WHERE id=$1)', [req.user.id]
     );
-    res.json({ success: true, rank: rankQ.rows[0].rank });
+    const weeklyQ = await pool.query(
+      'SELECT rank FROM (SELECT u.id, RANK() OVER (ORDER BY MAX(s.score) DESC) as rank FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at > NOW() - INTERVAL \'7 days\' GROUP BY u.id) t WHERE id = $1',
+      [req.user.id]
+    );
+    const weeklyRank = weeklyQ.rows.length ? parseInt(weeklyQ.rows[0].rank) : null;
+    const rewardTable = [300, 200, 150, 100, 100, 50, 50, 50, 50, 50];
+    const rewardAmount = weeklyRank && weeklyRank <= 10 ? rewardTable[weeklyRank - 1] : 0;
+    res.json({ success: true, rank: rankQ.rows[0].rank, weeklyRank, rewardAmount });
   } catch (e) {
     console.error('Score error:', e);
     res.status(500).json({ error: 'Server error' });
