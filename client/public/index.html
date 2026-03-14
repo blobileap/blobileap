@@ -139,7 +139,7 @@ canvas#game{width:100%;height:100%;display:block}
 <div class="sub">Built on Stellar</div>
 <button class="btn bp" onclick="startGame()">PLAY NOW</button>
 <div class="hint">TAP or SPACE to leap</div>
-<div id="ss-user" style="position:absolute;bottom:20px;font-size:11px;color:rgba(255,255,255,0.25)"></div>
+<div id="ss-user" style="position:absolute;bottom:20px;font-size:11px;color:rgba(255,255,255,0.25);text-align:center;width:100%;left:0"></div>
 </div>
 
 <div class="scr" id="ds">
@@ -160,10 +160,10 @@ canvas#game{width:100%;height:100%;display:block}
 <div class="wallet-banner" id="wb">
 <h4 id="wb-title">Secure your account</h4>
 <p id="wb-desc">Connect wallet to play anywhere and never lose progress</p>
-<div id="wb-options" style="display:flex;flex-direction:column;gap:8px;width:100%">
-<button class="bw wb-opt" onclick="connectFreighter()">Freighter</button>
-<button class="bw wb-opt" onclick="connectAlbedo()" style="background:#0091ff;color:#fff">Albedo</button>
-<button class="bw wb-opt" onclick="connectWC()" style="background:#3396ff;color:#fff">LOBSTR / QR Code</button>
+<div id="wb-options" style="display:flex;flex-direction:row;gap:6px;width:100%;justify-content:center">
+<button class="bw wb-opt" onclick="connectFreighter()" style="flex:1;font-size:11px;padding:10px 4px">Freighter</button>
+<button class="bw wb-opt" onclick="connectAlbedo()" style="flex:1;font-size:11px;padding:10px 4px;background:#0091ff;color:#fff">Albedo</button>
+<button class="bw wb-opt" onclick="connectWC()" style="flex:1;font-size:11px;padding:10px 4px;background:#3396ff;color:#fff">Lobstr/QR</button>
 </div>
 <div id="wb-status" style="display:none;text-align:center;padding:8px;font-size:13px;color:#5eead4"></div>
 <button class="btn-skip" onclick="dismissWallet()">Not now</button>
@@ -297,6 +297,7 @@ let userToken=null,userNickname=null,userWallet=null,nickAsked=false;var blobiBa
 function fmtBlobi(n){if(n>=1000000)return(n/1000000).toFixed(1).replace(".0","")+"M";if(n>=10000)return(n/1000).toFixed(1).replace(".0","")+"K";if(n>=1)return Math.floor(n).toLocaleString();if(n>0.01)return n.toFixed(2);if(n>0)return"<0.01";return"0"}
 var hasTrustline=false;
 
+var lastBalFetch=0;
 async function checkTrustline(){
 if(!userWallet)return;
 try{
@@ -441,7 +442,7 @@ if(userToken){apiCall('GET','/auth/me').then(function(r){
 if(r&&r.user){userNickname=r.user.nickname;userWallet=r.user.wallet_address||null;walletOn=!!userWallet;saveData();updateUserDisplay()}
 else if(r&&r.error){userToken=null;userNickname=null;nickAsked=false;saveData()}
 }).catch(function(){})}
-if(userWallet){checkTrustline();fetch("/api/rewards/balance/"+userWallet).then(function(r){return r.json()}).then(function(d){blobiBal=parseFloat(d.balance||"0");updateUserDisplay()}).catch(function(){})};
+if(userWallet){checkTrustline();if(Date.now()-lastBalFetch>300000)fetch("/api/rewards/balance/"+userWallet).then(function(r){return r.json()}).then(function(d){blobiBal=parseFloat(d.balance||"0");lastBalFetch=Date.now();updateUserDisplay()}).catch(function(){})};
 
 const WALLET_AFTER=5;
 const pl={x:0,y:0,vy:0,w:46,h:46,gnd:true,sq:1,st:1,rot:0,bT:0,bk:false,mo:0,tr:[],alive:true};
@@ -1566,9 +1567,19 @@ for(let i=confetti.length-1;i>=0;i--){const c=confetti[i];c.x+=c.vx;c.vy+=c.grav
 if(scoreCountUp.active){scoreCountUp.current+=Math.ceil((scoreCountUp.target-scoreCountUp.current)*0.08);if(scoreCountUp.current>=scoreCountUp.target){scoreCountUp.current=scoreCountUp.target;scoreCountUp.active=false}document.getElementById('d-sc').textContent=scoreCountUp.current}
 draw();drawConfetti();if(state==='menu')drawCPV();requestAnimationFrame(loop)}
 initBg();pl.y=GY-pl.h;drawCPV();upB();rszCf();
+var userCardCount=0;
 function updateUserDisplay(){
 var el=document.getElementById('ss-user');
-if(el)el.textContent=userNickname?('Playing as '+userNickname+(userWallet?' \u2713':'')+(blobiBal>0?' \u2022 '+fmtBlobi(blobiBal)+' BLOBI':'')):''}
+if(!el||!userNickname)return;
+var ws=userWallet?(userWallet.substring(0,4)+'...'+userWallet.slice(-4)):'';
+var line1='Playing as '+userNickname+(userWallet?' \u2713':'');
+var line2='';
+if(ws)line2+=ws;
+if(blobiBal>0)line2+=(line2?' \u2022 ':'')+fmtBlobi(blobiBal)+' BLOBI';
+var line3='';
+if(userCardCount>0)line3='<a href="/u/'+encodeURIComponent(userNickname)+'" style="color:#ffd700;text-decoration:none;font-size:11px" onclick="event.stopPropagation()">'+userCardCount+' Card'+(userCardCount>1?'s':'')+'</a>';
+el.innerHTML=line1+(line2?'<br><span style="font-size:10px;color:rgba(255,255,255,0.15)">'+line2+'</span>':'')+(line3?'<br>'+line3:'');
+if(userNickname&&userCardCount===0)fetch('/api/cards?owner='+encodeURIComponent(userNickname)).then(function(r){return r.json()}).then(function(d){if(d&&d.cards)userCardCount=d.cards.length;if(userCardCount>0)updateUserDisplay()}).catch(function(){})}
 updateUserDisplay();
 loop();
 document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});

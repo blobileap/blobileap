@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Player Profile — Blobi Leap</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1527;color:#fff;font-family:'Nunito',sans-serif;min-height:100vh;padding:20px}
+.wrap{max-width:480px;margin:0 auto}
+.header{text-align:center;padding:30px 0 20px}
+.avatar{width:80px;height:80px;border-radius:50%;background:#5ce1e6;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;color:#1a1a2e}
+.nick{font-size:24px;font-weight:900;color:#5ce1e6}
+.wallet{font-size:12px;color:rgba(255,255,255,0.3);margin-top:4px;word-break:break-all}
+.wallet a{color:rgba(255,255,255,0.4);text-decoration:none}
+.wallet a:hover{color:#5eead4}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:16px 0}
+.stat{background:rgba(255,255,255,0.05);border-radius:12px;padding:12px 8px;text-align:center}
+.stat-val{font-size:22px;font-weight:900;color:#fff}
+.stat-label{font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-top:2px}
+.tier{display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:800;margin-top:10px}
+.section{margin-top:24px}
+.section-title{font-size:13px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;text-align:center}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.card-item{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all 0.2s}
+.card-item:hover{border-color:rgba(92,225,230,0.3);background:rgba(92,225,230,0.05)}
+.card-icon{font-size:28px;margin-bottom:6px}
+.card-id{font-size:11px;font-weight:700;color:rgba(255,255,255,0.6)}
+.card-rarity{font-size:9px;padding:2px 8px;border-radius:8px;margin-top:4px;display:inline-block;font-weight:700}
+.r-COMMON{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5)}
+.r-UNCOMMON{background:rgba(92,225,230,0.15);color:#5eead4}
+.r-LEGENDARY{background:rgba(255,215,0,0.15);color:#ffd700}
+.empty{text-align:center;color:rgba(255,255,255,0.2);font-size:13px;padding:30px 0}
+.footer{text-align:center;margin-top:30px;padding:20px 0;border-top:1px solid rgba(255,255,255,0.06)}
+.footer a{color:#5eead4;text-decoration:none;font-size:13px;font-weight:700}
+.not-found{text-align:center;padding:60px 0}
+.not-found h2{color:rgba(255,255,255,0.3);font-size:18px}
+.blobi-bal{color:#ffd700;font-size:13px;margin-top:6px}
+.joined{font-size:11px;color:rgba(255,255,255,0.2);margin-top:6px}
+</style>
+</head><body>
+<div class="wrap" id="main">
+<div class="not-found" id="loading"><h2>Loading...</h2></div>
+</div>
+<script>
+const TIERS=[
+{name:'Newbie',min:0,color:'#888',stars:''},
+{name:'Rookie',min:10,color:'#5eead4',stars:'\u2605'},
+{name:'Runner',min:25,color:'#60a5fa',stars:'\u2605\u2605'},
+{name:'Pro',min:50,color:'#a78bfa',stars:'\u2605\u2605\u2605'},
+{name:'Master',min:75,color:'#c084fc',stars:'\u2605\u2605\u2605\u2605'},
+{name:'Legend',min:100,color:'#ffd700',stars:'\u2605\u2605\u2605\u2605\u2605'},
+{name:'Mythic',min:150,color:'#ff6b6b',stars:'\u2726'}
+];
+function getTier(s){for(var i=TIERS.length-1;i>=0;i--)if(s>=TIERS[i].min)return TIERS[i];return TIERS[0]}
+
+const EFFECTS={
+star:{icon:'<svg width="28" height="28" viewBox="0 0 28 28"><line x1="24" y1="4" x2="4" y2="14" stroke="#5eead4" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="4" r="2.5" fill="#fff"/></svg>',name:'Shooting Star'},
+bolt:{icon:'<svg width="28" height="28" viewBox="0 0 28 28"><path d="M16 2L8 14h6L10 26l12-14h-6z" fill="#ffd700" stroke="#daa520" stroke-width="0.5"/></svg>',name:'Lightning Bolt'},
+ship:{icon:'<svg width="28" height="28" viewBox="0 0 28 28"><polygon points="2,12 1,14 2,16" fill="#ffd700" opacity="0.3"/><polygon points="3,12.5 1.5,14 3,15.5" fill="#ffaa00" opacity="0.5"/><polygon points="4,13 2.5,14 4,15" fill="#ffe066" opacity="0.7"/><ellipse cx="14" cy="14" rx="8" ry="4" fill="#d8dfe8"/><ellipse cx="15" cy="12.5" rx="5" ry="1.5" fill="rgba(255,255,255,0.2)"/><polygon points="22,10 26,14 22,18" fill="#5eead4"/><polygon points="6,10 4,7 7,11" fill="#5eead4"/><polygon points="6,18 4,21 7,17" fill="#5eead4"/><circle cx="16" cy="14" r="2" fill="#1a1a2e"/><circle cx="15.5" cy="13.5" r="0.8" fill="#5eead4"/></svg>',name:'Stellar Rocket'},
+void:{icon:'<svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="7" fill="#050508"/><circle cx="14" cy="14" r="7.5" fill="none" stroke="#ffedd5" stroke-width="1.5"/><ellipse cx="14" cy="14" rx="12" ry="2.5" fill="none" stroke="#ffcc66" stroke-width="1" opacity="0.5"/></svg>',name:'Black Hole'},
+aura:{icon:'<svg width="28" height="28" viewBox="0 0 28 28"><rect x="4" y="4" width="3" height="20" rx="1.5" fill="#64dc96" opacity="0.5"/><rect x="9" y="2" width="3" height="24" rx="1.5" fill="#3cdca0" opacity="0.6"/><rect x="14" y="5" width="3" height="18" rx="1.5" fill="#50ffb4" opacity="0.5"/><rect x="19" y="3" width="3" height="22" rx="1.5" fill="#6448c8" opacity="0.5"/><rect x="24" y="6" width="3" height="16" rx="1.5" fill="#3c64dc" opacity="0.4"/></svg>',name:'Aurora Borealis'}
+};
+
+const ISSUER='GDSM5FTQQQDCM5AU6B5FICSCO65IPY5V2KE4TBC6PSWCDGBP3V2BLOBI';
+
+function fmtBlobi(n){if(n>=1000000)return(n/1000000).toFixed(1).replace('.0','')+'M';if(n>=10000)return(n/1000).toFixed(1).replace('.0','')+'K';if(n>=1)return Math.floor(n).toLocaleString();if(n>0.01)return n.toFixed(2);if(n>0)return'<0.01';return'0'}
+
+async function loadProfile(){
+var path=window.location.pathname;
+var nick=path.split('/u/')[1];
+if(!nick){document.getElementById('loading').innerHTML='<h2>Player not found</h2>';return}
+nick=decodeURIComponent(nick).replace(/\/$/,'');
+
+try{
+var res=await fetch('/api/auth/profile/'+encodeURIComponent(nick));
+if(!res.ok){document.getElementById('loading').innerHTML='<h2>Player not found</h2><p style="color:rgba(255,255,255,0.2);margin-top:10px"><a href="/" style="color:#5eead4">Play Blobi Leap</a></p>';return}
+var d=await res.json();
+var tier=getTier(d.bestScore);
+var walletShort=d.wallet?(d.wallet.substring(0,4)+'...'+d.wallet.slice(-4)):'No wallet';
+var walletFull=d.wallet||'';
+var joined=new Date(d.joinedAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+
+// Fetch BLOBI balance
+var blobiBal=d.blobiBal||0;
+if(d.wallet){
+try{var bRes=await fetch('/api/rewards/balance/'+d.wallet);var bData=await bRes.json();blobiBal=parseFloat(bData.balance||'0')}catch(e){}}
+
+document.title='@'+d.nickname+' — Blobi Leap';
+
+var html='<div class="header">';
+html+='<div class="avatar">'+d.nickname.charAt(0).toUpperCase()+'</div>';
+html+='<div class="nick">@'+d.nickname+'</div>';
+if(d.wallet)html+='<div class="wallet"><a href="https://stellar.expert/explorer/public/account/'+walletFull+'" target="_blank">'+walletShort+'</a></div>';
+if(blobiBal>0)html+='<div class="blobi-bal">\uD83D\uDCB0 '+fmtBlobi(blobiBal)+' BLOBI</div>';
+html+='<div class="tier" style="background:'+tier.color+'22;color:'+tier.color+';border:1px solid '+tier.color+'44">'+tier.name+' '+tier.stars+'</div>';
+html+='<div class="joined">Joined '+joined+'</div>';
+html+='</div>';
+
+html+='<div class="stats">';
+html+='<div class="stat"><div class="stat-val">'+d.bestScore+'</div><div class="stat-label">Best Score</div></div>';
+html+='<div class="stat"><div class="stat-val">'+d.totalGames+'</div><div class="stat-label">Games</div></div>';
+html+='<div class="stat"><div class="stat-val">'+d.cards.length+'</div><div class="stat-label">Cards</div></div>';
+html+='</div>';
+
+html+='<div class="section">';
+html+='<div class="section-title">Cosmic Collection</div>';
+if(d.cards.length===0){
+html+='<div class="empty">No cards yet. Play to discover cosmic events!</div>';
+}else{
+html+='<div class="cards-grid">';
+d.cards.forEach(function(card){
+var eff=EFFECTS[card.effect]||{icon:'?',name:card.effect};
+html+='<a href="/card/'+card.id+'" class="card-item" style="text-decoration:none">';
+html+='<div class="card-icon">'+eff.icon+'</div>';
+html+='<div class="card-id">'+card.id+'</div>';
+html+='<div class="card-rarity r-'+card.rarity+'">'+card.rarity+'</div>';
+html+='</a>';
+});
+html+='</div>';}
+html+='</div>';
+
+html+='<div class="footer"><a href="/">Play Blobi Leap</a></div>';
+
+document.getElementById('main').innerHTML=html;
+}catch(e){document.getElementById('loading').innerHTML='<h2>Error loading profile</h2>'}}
+
+loadProfile();
+</script>
+</body></html>

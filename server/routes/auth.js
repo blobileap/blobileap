@@ -46,3 +46,34 @@ router.get('/me', async (req, res) => {
 });
 
 module.exports = router;
+
+router.get('/profile/:nickname', async (req, res) => {
+  try {
+    const nick = req.params.nickname;
+    const u = await pool.query('SELECT id, nickname, wallet_address, best_score, total_games, created_at FROM users WHERE LOWER(nickname) = LOWER($1)', [nick]);
+    if (!u.rows.length) return res.status(404).json({ error: 'User not found' });
+    const user = u.rows[0];
+    const cards = await pool.query('SELECT id, effect, season, number, seed, rarity, claimed_at FROM cosmic_cards WHERE owner_id = $1 ORDER BY claimed_at DESC', [user.id]);
+    var blobiBal = 0;
+    if (user.wallet_address) {
+      try {
+        const fetch = (await import('node-fetch')).default;
+        const r = await fetch('https://horizon.stellar.org/accounts/' + user.wallet_address);
+        if (r.ok) {
+          const acc = await r.json();
+          const b = acc.balances.find(x => x.asset_code === 'BLOBI' && x.asset_issuer === 'GDSM5FTQQQDCM5AU6B5FICSCO65IPY5V2KE4TBC6PSWCDGBP3V2BLOBI');
+          if (b) blobiBal = parseFloat(b.balance);
+        }
+      } catch (e) {}
+    }
+    res.json({
+      nickname: user.nickname,
+      wallet: user.wallet_address,
+      bestScore: user.best_score,
+      totalGames: user.total_games,
+      joinedAt: user.created_at,
+      blobiBal: blobiBal,
+      cards: cards.rows
+    });
+  } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});
