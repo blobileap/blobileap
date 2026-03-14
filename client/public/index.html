@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Blobi Leap — Built on Stellar</title>
+<meta name="description" content="Help Blobi dodge spikes, chase high scores, and compete globally on the Stellar blockchain.">
+<meta property="og:title" content="Blobi Leap">
+<meta property="og:description" content="A casual runner game built on Stellar. How far can Blobi leap?">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://blobileap.com">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Blobi Leap">
+<meta name="twitter:description" content="A casual runner game built on Stellar. How far can Blobi leap?">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%235ce1e6'/><circle cx='50' cy='50' r='32' fill='%2380e8ec'/><circle cx='38' cy='42' r='9' fill='white'/><circle cx='62' cy='42' r='9' fill='white'/><circle cx='41' cy='43' r='5' fill='%231a1a2e'/><circle cx='65' cy='43' r='5' fill='%231a1a2e'/></svg>">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;overflow:hidden;height:100dvh;width:100vw;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#gc{position:relative;width:100%;max-width:480px;height:100dvh;max-height:780px;overflow:hidden}
+canvas#game{width:100%;height:100%;display:block}
+#hud{position:absolute;top:0;left:0;right:0;padding:18px 20px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:10}
+#score-display{font-size:46px;font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 15px rgba(0,0,0,0.5);transition:color .3s,text-shadow .3s,transform .15s}
+#score-display.gold{color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.5)}
+#score-display.pulse{animation:scorePulse .3s ease-out}
+@keyframes scorePulse{0%{transform:scale(1)}50%{transform:scale(1.25)}100%{transform:scale(1)}}
+#best-display{font-size:13px;font-weight:700;color:rgba(255,255,255,0.4);margin-top:2px}
+#hud-newbest{font-size:12px;font-weight:800;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.4);opacity:0;transition:opacity .3s;margin-top:2px}
+#hud-newbest.show{opacity:1}
+.hud-r{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#spd{font-size:13px;font-weight:800;color:#1a1a2e;background:#ffd700;padding:5px 14px;border-radius:20px;opacity:0;transition:opacity .3s,transform .2s;box-shadow:0 2px 8px rgba(255,215,0,0.3)}
+#spd.pop{transform:scale(1.25)}
+#sbtn{pointer-events:auto;background:rgba(255,255,255,0.1);border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#sbtn svg{width:18px;height:18px;fill:#fff;opacity:0.6}
+#nm{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%) scale(0.5);font-size:24px;font-weight:900;color:#ffd700;opacity:0;pointer-events:none;z-index:15;text-shadow:0 0 20px rgba(255,215,0,0.6);transition:opacity .12s,transform .12s}
+#nm.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#cb{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);font-size:16px;font-weight:800;color:#5eead4;opacity:0;pointer-events:none;z-index:15;transition:opacity .2s}
+#cb.show{opacity:1}
+#stk{position:absolute;top:76px;right:20px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.25);pointer-events:none}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20}
+#ss{background:linear-gradient(180deg,#16213e 0%,#1a1a2e 50%,#0f3460 100%)}
+#ss h1{font-size:40px;font-weight:900;color:#fff;text-shadow:0 0 40px rgba(255,215,0,0.25)}
+#ss .sub{font-size:12px;font-weight:700;color:rgba(255,255,255,0.3);margin-bottom:40px;letter-spacing:5px;text-transform:uppercase}
+.cpv{width:150px;height:150px;margin-bottom:24px;animation:bnc 1.2s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(92,225,230,0.4)) drop-shadow(0 0 40px rgba(92,225,230,0.15))}
+@keyframes bnc{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+.btn{border:none;font-family:'Nunito',sans-serif;font-weight:800;border-radius:50px;cursor:pointer;transition:transform .1s;pointer-events:auto}
+.btn:active{transform:scale(0.93)}
+.bp{background:#ffd700;color:#1a1a2e;font-size:18px;padding:16px 56px;box-shadow:0 4px 24px rgba(255,215,0,0.35)}
+.hint{margin-top:20px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.2)}
+
+/* death screen */
+#ds{display:none;background:rgba(10,10,20,0.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:auto;padding:0 24px}
+#ds.show{display:flex}
+.ds-score-wrap{margin:8px 0}
+.ds-score{font-size:80px;font-weight:900;color:#fff;line-height:1}
+.ds-label{font-size:13px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:3px}
+.ds-best{font-size:16px;font-weight:800;min-height:24px;text-shadow:0 0 12px rgba(255,215,0,0.4)}
+.ds-msg{font-size:14px;font-weight:700;margin-top:6px;min-height:20px;text-align:center}
+.ds-stats{display:flex;gap:36px;margin:16px 0 20px}
+.st{text-align:center}
+.sv{font-size:22px;font-weight:900;color:#fff}
+.sl{font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;margin-top:2px}
+.ds-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+.btn-share{background:rgba(94,225,230,0.12);color:#5eead4;border:1.5px solid rgba(94,225,230,0.35);font-size:14px;padding:12px 28px}
+.btn-share:hover{background:rgba(94,225,230,0.2)}
+
+/* wallet prompt — now INSIDE death screen */
+.wallet-banner{background:linear-gradient(135deg,rgba(94,225,230,0.1),rgba(94,225,230,0.05));border:1px solid rgba(94,225,230,0.2);border-radius:14px;padding:16px;text-align:center;margin-top:16px;max-width:340px;display:none}
+.wallet-banner.show{display:block}
+.wallet-banner h4{color:#5eead4;font-size:14px;font-weight:800;margin-bottom:4px}
+.wallet-banner p{color:rgba(255,255,255,0.45);font-size:12px;line-height:1.5;margin-bottom:12px}
+.bw{background:#5eead4;color:#1a1a2e;border:none;padding:10px 28px;border-radius:50px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer}
+.bw:active{transform:scale(0.95)}
+.bw:disabled{opacity:0.4;cursor:not-allowed}
+.wb-opt{width:100%;padding:11px;border-radius:12px;font-size:13px;transition:opacity .15s}
+.card-claim{background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:14px;padding:14px 18px;margin-top:10px;text-align:center;width:100%;max-width:340px}
+.btn-skip{background:none;border:none;color:rgba(255,255,255,0.25);font-family:'Nunito',sans-serif;font-size:11px;cursor:pointer;margin-top:8px;padding:6px}
+
+/* share overlay */
+#so{display:none;position:absolute;inset:0;background:rgba(10,10,20,0.96);z-index:30;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;padding:20px}
+#so.show{display:flex}
+#scc{border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5)}
+#scv{display:block;max-width:100%;max-height:60vh;height:auto}
+.sb{display:flex;gap:10px;margin-top:16px}
+.sb .btn{font-size:14px;padding:12px 28px}
+.bd{background:#5eead4;color:#1a1a2e}
+.bc{background:rgba(255,255,255,0.1);color:#fff}
+.sh{font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px}
+#confetti-layer{position:absolute;inset:0;z-index:25;pointer-events:none}
+
+/* nickname modal */
+#nn-modal{display:none;position:absolute;inset:0;background:rgba(10,10,20,0.95);z-index:35;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto}
+#nn-modal.show{display:flex}
+#nn-modal h3{color:#fff;font-size:20px;font-weight:900;margin-bottom:6px}
+#nn-modal p{color:rgba(255,255,255,0.4);font-size:12px;margin-bottom:20px}
+#nn-input{background:rgba(255,255,255,0.08);border:1.5px solid rgba(94,225,230,0.3);border-radius:12px;padding:14px 20px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;color:#fff;width:240px;text-align:center;outline:none}
+#nn-input:focus{border-color:#5eead4}
+#nn-input::placeholder{color:rgba(255,255,255,0.2)}
+#nn-err{color:#ff6b6b;font-size:11px;min-height:18px;margin-top:6px}
+.btn-nn{background:#5eead4;color:#1a1a2e;border:none;padding:12px 40px;border-radius:50px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:12px}
+.btn-nn:active{transform:scale(0.95)}
+.btn-nn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-skip-nn{background:none;border:none;color:rgba(255,255,255,0.25);font-family:'Nunito',sans-serif;font-size:11px;cursor:pointer;margin-top:12px}
+
+/* leaderboard overlay */
+#lb-modal{display:none;position:absolute;inset:0;background:rgba(10,10,20,0.96);z-index:32;flex-direction:column;align-items:center;pointer-events:auto;padding:20px;overflow-y:auto}
+#lb-modal.show{display:flex}
+#lb-modal h3{color:#fff;font-size:20px;font-weight:900;margin:10px 0 4px}
+.lb-tabs{display:flex;gap:6px;margin-bottom:14px}
+.lb-tab{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:6px 16px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;color:rgba(255,255,255,0.4);cursor:pointer}
+.lb-tab.active{background:rgba(94,225,230,0.15);border-color:rgba(94,225,230,0.3);color:#5eead4}
+#lb-list{width:100%;max-width:360px}
+.lb-row{display:flex;align-items:center;padding:8px 12px;border-radius:10px;margin-bottom:4px;gap:10px}
+.lb-row.me{background:rgba(94,225,230,0.1);border:1px solid rgba(94,225,230,0.2)}
+.lb-rank{width:28px;font-size:14px;font-weight:900;color:rgba(255,255,255,0.3);text-align:center}
+.lb-rank.top1{color:#ffd700}
+.lb-rank.top2{color:#c0c0c0}
+.lb-rank.top3{color:#cd7f32}
+.lb-name{flex:1;font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-name .wallet-icon{color:#5eead4;font-size:10px;margin-left:4px}
+.lb-sc{font-size:15px;font-weight:900;color:#ffd700}
+.lb-empty{color:rgba(255,255,255,0.25);font-size:13px;text-align:center;margin-top:30px}
+.lb-myrank{color:rgba(255,255,255,0.3);font-size:12px;margin-top:10px}
+.btn-lb-close{background:rgba(255,255,255,0.08);color:#fff;border:none;padding:10px 28px;border-radius:50px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:14px}
+</style>
+</head>
+<body>
+<div id="gc">
+<canvas id="game"></canvas>
+<div id="hud"><div><div id="score-display">0</div><div id="best-display"></div><div id="hud-newbest"></div></div><div class="hud-r"><div id="spd">1.0x</div><button id="sbtn" onclick="toggleSound()"><svg id="son" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg><svg id="sof" style="display:none" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg></button></div></div>
+<div id="stk"></div><div id="nm"></div><div id="cb"></div>
+
+<div id="so"><div id="scc"><canvas id="scv" width="800" height="800"></canvas></div><div class="sb"><button class="btn bd" onclick="dlCard()">Download</button><button class="btn bc" onclick="clShare()">Close</button></div><div class="sh">Save and share anywhere</div></div>
+
+<div class="scr" id="ss">
+<canvas class="cpv" id="cpv" width="300" height="300"></canvas>
+<h1>BLOBI LEAP</h1>
+<div class="sub">Built on Stellar</div>
+<button class="btn bp" onclick="startGame()">PLAY NOW</button>
+<div class="hint">TAP or SPACE to leap</div>
+<div id="ss-user" style="position:absolute;bottom:20px;font-size:11px;color:rgba(255,255,255,0.25)"></div>
+</div>
+
+<div class="scr" id="ds">
+<div class="ds-label">Your score</div>
+<div class="ds-score-wrap"><div class="ds-score" id="d-sc">0</div></div>
+<div class="ds-best" id="d-nb"></div>
+<div class="ds-msg" id="d-msg"></div>
+<div class="ds-stats">
+<div class="st"><div class="sv" id="d-b">0</div><div class="sl">Best</div></div>
+<div class="st"><div class="sv" id="d-sp">1.0x</div><div class="sl">Speed</div></div>
+<div class="st"><div class="sv" id="d-g">0</div><div class="sl">Games</div></div>
+</div>
+<button class="btn bp" onclick="startGame()">PLAY AGAIN</button>
+<div class="ds-actions">
+<button class="btn btn-share" onclick="openShare()">Share Score</button>
+<button class="btn btn-share" onclick="openLB()">Leaderboard</button>
+</div>
+<div class="wallet-banner" id="wb">
+<h4 id="wb-title">Secure your account</h4>
+<p id="wb-desc">Connect wallet to play anywhere and never lose progress</p>
+<div id="wb-options" style="display:flex;flex-direction:column;gap:8px;width:100%">
+<button class="bw wb-opt" onclick="connectFreighter()">Freighter</button>
+<button class="bw wb-opt" onclick="connectAlbedo()" style="background:#0091ff;color:#fff">Albedo</button>
+<button class="bw wb-opt" onclick="connectWC()" style="background:#3396ff;color:#fff">LOBSTR / QR Code</button>
+</div>
+<div id="wb-status" style="display:none;text-align:center;padding:8px;font-size:13px;color:#5eead4"></div>
+<button class="btn-skip" onclick="dismissWallet()">Not now</button>
+</div>
+<div class="card-claim" id="cc" style="display:none">
+<h4 id="cc-title" style="color:#ffd700;font-size:14px;margin-bottom:4px"></h4>
+<p id="cc-desc" style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px">You discovered a rare cosmic event! Claim your collectible card.</p>
+<button class="bw" id="cc-btn" onclick="claimCard()" style="font-size:12px;padding:8px 20px">Claim Card</button>
+<button class="btn-skip" onclick="document.getElementById('cc').style.display='none'" style="font-size:11px">Later</button>
+</div>
+<canvas id="confetti-layer"></canvas>
+
+<div id="nn-modal">
+<h3>Choose your name</h3>
+<p>Show your name on the leaderboard</p>
+<input type="text" id="nn-input" placeholder="Nickname" maxlength="20" autocomplete="off" spellcheck="false">
+<div id="nn-err"></div>
+<button class="btn-nn" id="nn-btn" onclick="submitNickname()">LET'S GO</button>
+<div id="nn-recover" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)">
+<p style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px">Already played? Recover with your wallet</p>
+<div id="nn-recover-opts" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+<button class="btn-nn" onclick="recoverWith('freighter')" style="background:#5eead4;font-size:11px;padding:7px 14px">Freighter</button>
+<button class="btn-nn" onclick="recoverWith('albedo')" style="background:#0091ff;color:#fff;font-size:11px;padding:7px 14px">Albedo</button>
+<button class="btn-nn" onclick="recoverWith('wc')" style="background:#3396ff;color:#fff;font-size:11px;padding:7px 14px">LOBSTR / QR</button>
+</div>
+<div id="nn-recover-status" style="display:none;font-size:12px;color:#5eead4;margin-top:6px"></div>
+</div>
+<button class="btn-skip-nn" onclick="skipNickname()">Play without name</button>
+</div>
+
+<div id="lb-modal">
+<h3>Leaderboard</h3>
+<div class="lb-tabs">
+<div class="lb-tab active" onclick="loadLB('daily')">Today</div>
+<div class="lb-tab" onclick="loadLB('weekly')">Week</div>
+<div class="lb-tab" onclick="loadLB('all')">All Time</div>
+</div>
+<div id="lb-list"></div>
+<div id="lb-myrank" class="lb-myrank"></div>
+<button class="btn-lb-close" onclick="closeLB()">Close</button>
+</div>
+</div>
+
+<script>
+// ========== SOUND ==========
+let AC=null,soundOn=true,bgM=null;
+function initAudio(){if(AC)return;AC=new(window.AudioContext||window.webkitAudioContext)()}
+function toggleSound(){soundOn=!soundOn;document.getElementById('son').style.display=soundOn?'block':'none';document.getElementById('sof').style.display=soundOn?'none':'block';if(!soundOn&&bgM){clearInterval(bgM);bgM=null}if(soundOn&&state==='playing')startBg()}
+function tn(f,d,t,v,r){if(!soundOn||!AC||document.hidden)return;const o=AC.createOscillator(),g=AC.createGain();o.type=t||'sine';o.frequency.setValueAtTime(f,AC.currentTime);if(r)o.frequency.exponentialRampToValueAtTime(r,AC.currentTime+d);g.gain.setValueAtTime(v||0.15,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}
+function ns(d,v){if(!soundOn||!AC||document.hidden)return;const b=AC.createBuffer(1,AC.sampleRate*d,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=(Math.random()*2-1)*0.5;const s=AC.createBufferSource();s.buffer=b;const g=AC.createGain();g.gain.setValueAtTime(v||0.08,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=800;s.connect(f);f.connect(g);g.connect(AC.destination);s.start();s.stop(AC.currentTime+d)}
+function sJump(){tn(320,.12,'sine',.13,640);tn(480,.08,'triangle',.06,720)}
+function sScore(){tn(880,.1,'sine',.1);setTimeout(()=>tn(1100,.12,'sine',.08),60)}
+function sNM(){tn(600,.15,'sawtooth',.06,1200);ns(.08,.05)}
+function sDie(){tn(300,.3,'sawtooth',.12,80);tn(200,.4,'square',.06,40);ns(.25,.1)}
+function sSU(){tn(500,.15,'sine',.1,1000);setTimeout(()=>tn(750,.15,'sine',.08,1500),80)}
+function sNB(){[523,659,784,1047].forEach((n,i)=>setTimeout(()=>tn(n,.2,'sine',.1),i*100))}
+function sCelebrate(){
+// dramatic celebration with chord + sparkle
+tn(523,.2,'sine',.12);
+setTimeout(()=>tn(659,.2,'sine',.11),80);
+setTimeout(()=>tn(784,.2,'sine',.1),160);
+setTimeout(()=>{tn(1047,.35,'sine',.15);tn(1319,.35,'triangle',.07);tn(784,.35,'triangle',.05)},240);
+setTimeout(()=>{tn(1175,.15,'sine',.06);ns(.06,.03)},420);
+setTimeout(()=>{tn(1319,.15,'sine',.06);ns(.05,.02)},500);
+setTimeout(()=>{tn(1047,.4,'sine',.1);tn(523,.4,'triangle',.04)},580)}
+function sThunder(){tn(1200,.04,'square',.06);ns(.3,.07);tn(60,.4,'sine',.08,30);setTimeout(()=>ns(.2,.04),200)}
+
+function genBolt(x1,y1,x2,y2,depth){
+const bolts=[];
+function branch(sx,sy,ex,ey,d,w){
+const pts=[{x:sx,y:sy}];
+const segs=4+Math.floor(Math.random()*3);
+for(let i=1;i<segs;i++){
+const t=i/segs;
+// sharp zigzag — alternate left/right with strong offsets
+const dir=(i%2===0)?1:-1;
+const mx=sx+(ex-sx)*t+dir*(15+Math.random()*25);
+const my=sy+(ey-sy)*t+(Math.random()-0.5)*10;
+pts.push({x:mx,y:my});
+if(d>0&&Math.random()<0.4){
+const bex=mx+dir*(20+Math.random()*30);
+const bey=my+(ey-my)*0.4+Math.random()*20;
+branch(mx,my,bex,bey,d-1,w*0.6)}}
+pts.push({x:ex,y:ey});
+bolts.push({pts,w})}
+branch(x1,y1,x2,y2,depth,3);
+return bolts}
+
+function spawnLightning(){
+if(document.hidden)return;
+const x=W*0.2+Math.random()*W*0.6;
+const y1=5+Math.random()*15;
+const y2=GY*0.55+Math.random()*GY*0.25;
+lightning.active=true;lightning.timer=0;lightning.flashAlpha=1;
+lightning.bolts=genBolt(x,y1,x+(Math.random()-0.5)*50,y2,2);
+if(state==='playing')sawLightning=true;
+sThunder()}
+function sLand(){ns(.06,.03);tn(150,.06,'sine',.03,100)}
+function sSurpass(){
+// dramatic rising arpeggio + harmony chord
+tn(523,.15,'sine',.15);
+setTimeout(()=>tn(659,.15,'sine',.14),70);
+setTimeout(()=>tn(784,.15,'sine',.13),140);
+setTimeout(()=>{tn(1047,.25,'sine',.16);tn(1319,.25,'triangle',.08);tn(784,.25,'triangle',.06)},210);
+setTimeout(()=>tn(1175,.2,'sine',.06),350);
+setTimeout(()=>tn(1047,.3,'sine',.08),420);
+ns(.08,.04)}
+function startBg(){if(bgM||!soundOn)return;const n=[262,294,330,349,392,349,330,294];let i=0;bgM=setInterval(()=>{if(!soundOn||state!=='playing'){clearInterval(bgM);bgM=null;return}tn(n[i%n.length],.3,'sine',.02);i++},400)}
+function stopBg(){if(bgM){clearInterval(bgM);bgM=null}}
+
+// ========== CANVAS ==========
+const cv=document.getElementById('game'),cx=cv.getContext('2d');
+let W,H,GY,PX;const DR=Math.min(window.devicePixelRatio||1,3);
+function rsz(){const c=document.getElementById('gc'),r=c.getBoundingClientRect();cv.width=r.width*DR;cv.height=r.height*DR;cx.setTransform(DR,0,0,DR,0,0);W=r.width;H=r.height;GY=H*0.75;PX=W*0.2}
+rsz();window.addEventListener('resize',()=>{rsz();rszCf()});
+
+const P={sky1:'#16213e',sky2:'#0f3460',sky3:'#1a1a2e',gnd:'#0d1b2a',gndT:'#1b2838',gndA:'#2a3f5f',spk:'#ff6b6b',spkL:'#ff8787',spkD:'#c0392b',spkG:'rgba(255,107,107,0.2)',gold:'#ffd700',body:'#5ce1e6',belly:'#45b7d1',dark:'#2d8fa5',cheek:'rgba(255,150,200,0.3)',mt1:'#162447',mt2:'#1f3568'};
+
+// ========== API CLIENT ==========
+const API_BASE='';
+let userToken=null,userNickname=null,userWallet=null,nickAsked=false;
+
+function getIdentityText(){
+if(!userNickname)return '';
+let t='@'+userNickname;
+if(userWallet){t+=' \u00b7 '+userWallet.substring(0,4)+'...'+userWallet.substring(userWallet.length-4)}
+return t}
+
+let state='menu',score=0,best=0,totalG=0,streak=0,gameSpd=1,basSpd=3.4,fc=0,shake=0;
+let parts=[],obs=[],stars=[],mts=[],gOff=0,nmCombo=0;
+let walletOn=false,walletDismissed=false;
+let passedBest=false;
+let shootingStars=[];
+let aurora={active:false,timer:0,alpha:0,phase:0,colors:null};
+let rocket={active:false,x:0,y:0,timer:0};
+let blackhole={active:false,x:0,y:0,timer:0,rot:0,size:0};
+let lightning={active:false,timer:0,bolts:[],flashAlpha:0};
+let confetti=[];
+let scoreCountUp={active:false,target:0,current:0};
+// per-game stats for share card
+let nmTotal=0,bestCmb=0,survTime=0,totLeaps=0;
+let sawStar=false,sawLightning=false,sawRocket=false,sawBlackhole=false,sawAurora=false;
+let lastFlavor='Another day, another leap.';
+
+function genFlavor(){
+var f=[];var pick=function(a){return a[Math.floor(Math.random()*a.length)]};
+// Priority 1: ultra-rare cosmic combos
+if(sawBlackhole&&sawAurora)return lastFlavor='Light and darkness in one run. Blobi saw it all.';
+var allSeen=sawStar&&sawLightning&&sawRocket&&sawBlackhole&&sawAurora;
+if(allSeen)return lastFlavor='The cosmos revealed everything to Blobi.';
+// Priority 2: rare cosmic singles
+if(sawBlackhole)return lastFlavor=pick(['Blobi stared into the void. The void blinked first.','Not many have seen the void and lived.']);
+if(sawAurora)return lastFlavor=pick(['The sky blessed Blobi tonight.','The northern lights danced for Blobi alone.']);
+// Priority 3: tier-based (very high scores)
+if(best>=150)return lastFlavor=pick(['Blobi transcended reality itself.','They said it was impossible. Blobi disagreed.']);
+if(best>=100&&score>=100)return lastFlavor='A score whispered about in legends.';
+// Priority 4: skill
+if(bestCmb>=7)return lastFlavor='Seven lives in seven seconds.';
+if(bestCmb>=5)return lastFlavor=bestCmb+' spikes, '+bestCmb+' heartbeats, one Blobi.';
+if(nmTotal>=15)return lastFlavor=nmTotal+' close calls. Blobi laughed at every one.';
+if(nmTotal>=10)return lastFlavor='Blobi loves living on the edge.';
+// Priority 5: speed + endurance
+if(gameSpd>=2.5)return lastFlavor='Terminal velocity. Blobi didn\'t slow down.';
+if(gameSpd>=2)return lastFlavor='Blobi broke the speed of light.';
+if(survTime>=90)return lastFlavor='90 seconds of holding breath.';
+if(survTime>=60)return lastFlavor='One minute of pure focus.';
+if(totLeaps>=100)return lastFlavor='100 leaps. Each one a choice to keep going.';
+if(totLeaps>=50)return lastFlavor=totLeaps+' leaps. Not one wasted.';
+// Priority 6: combo/skill medium
+if(bestCmb>=3)return lastFlavor='Blobi danced between the spikes.';
+if(nmTotal===0&&score>10)return lastFlavor='Blobi played it safe this time.';
+if(best>=75)return lastFlavor='Blobi has mastered the leap.';
+// Priority 7: easter eggs
+if(score===69)return lastFlavor='Nice.';
+if(score===42)return lastFlavor='The answer to everything.';
+if(score===100)return lastFlavor='Triple digits. Blobi just made history.';
+if(score===1)return lastFlavor='One point. One moment. One Blobi.';
+// Priority 8: low score
+if(score===0)return lastFlavor='Blobi blinked.';
+if(score<5&&score>0)return lastFlavor=pick(['Every legend starts somewhere.','Blobi tripped, but got back up.']);
+// Priority 9: default
+return lastFlavor=pick(['Another day, another leap.','Blobi never stops. Blobi only pauses.','The spikes won this round.','One more try. Blobi always says one more.'])}
+
+// Persistence via localStorage + cookie backup
+function setCookie(k,v,days){var d=new Date();d.setTime(d.getTime()+(days||365)*86400000);document.cookie=k+'='+encodeURIComponent(v)+';expires='+d.toUTCString()+';path=/;SameSite=Lax'}
+function getCookie(k){var m=document.cookie.match(new RegExp('(^| )'+k+'=([^;]+)'));return m?decodeURIComponent(m[2]):null}
+function saveData(){
+try{var d=JSON.stringify({best,totalG,walletOn,userToken,userNickname,userWallet,nickAsked});
+localStorage.setItem('blobi_v1',d);
+// cookie backup for mobile
+if(userToken)setCookie('blobi_token',userToken);
+if(userNickname)setCookie('blobi_nick',userNickname);
+if(userWallet)setCookie('blobi_wallet',userWallet);
+}catch(e){}}
+function loadData(){try{
+var d=JSON.parse(localStorage.getItem('blobi_v1'));
+if(d){best=d.best||0;totalG=d.totalG||0;walletOn=d.walletOn||false;userToken=d.userToken||null;userNickname=d.userNickname||null;userWallet=d.userWallet||null;nickAsked=d.nickAsked||false}
+// Recover from cookie if localStorage lost
+if(!userToken&&getCookie('blobi_token')){
+userToken=getCookie('blobi_token');
+userNickname=getCookie('blobi_nick')||null;
+userWallet=getCookie('blobi_wallet')||null;
+nickAsked=true;walletOn=!!userWallet;
+saveData();console.log('Recovered session from cookie')}
+}catch(e){}}
+loadData();
+// Verify token still valid on load
+if(userToken){apiCall('GET','/auth/me').then(function(r){
+if(r&&r.user){userNickname=r.user.nickname;userWallet=r.user.wallet_address||null;walletOn=!!userWallet;saveData();updateUserDisplay()}
+else if(r&&r.error){userToken=null;userNickname=null;nickAsked=false;saveData()}
+}).catch(function(){})}
+const WALLET_AFTER=5;
+
+const pl={x:0,y:0,vy:0,w:46,h:46,gnd:true,sq:1,st:1,rot:0,bT:0,bk:false,mo:0,tr:[],alive:true};
+const GR=0.6,JMP=-12.5,MF=15;
+
+function initBg(){stars=[];for(let i=0;i<45;i++)stars.push({x:Math.random()*W*2,y:Math.random()*GY*0.65,sz:Math.random()*2+.5,sp:Math.random()*.2+.05,tw:Math.random()*6.28,ts:Math.random()*.03+.01});mts=[];for(let i=0;i<7;i++)mts.push({x:i*W*.4,w:140+Math.random()*120,h:50+Math.random()*90,l:Math.random()>.5?0:1})}
+function spawnO(){const ts=['s','s','s','d','t'],t=ts[Math.floor(Math.random()*ts.length)];let o={x:W+40,p:false,nm:false,t};if(t==='s'){o.w=32;o.h=48+Math.random()*16}else if(t==='d'){o.w=68;o.h=42+Math.random()*12}else{o.w=26;o.h=62+Math.random()*18}o.y=GY-o.h;obs.push(o)}
+function emit(x,y,n,c,sp,sz){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*sp,vy:(Math.random()-.9)*sp,life:1,dc:.015+Math.random()*.025,sz:(sz||2)+Math.random()*3,c,sh:Math.random()>.5?'c':'s'})}
+
+// ========== DRAW HELPERS ==========
+function drawSpk(x,y,w,h,c){c=c||cx;c.fillStyle=P.spkG;c.beginPath();c.moveTo(x-8,y+h+8);c.lineTo(x+w/2,y-12);c.lineTo(x+w+8,y+h+8);c.fill();c.fillStyle=P.spkD;c.beginPath();c.moveTo(x+2,y+h);c.lineTo(x+w/2+1,y+2);c.lineTo(x+w,y+h);c.closePath();c.fill();c.fillStyle=P.spk;c.beginPath();c.moveTo(x,y+h);c.lineTo(x+w/2,y);c.lineTo(x+w,y+h);c.closePath();c.fill();c.fillStyle=P.spkL;c.beginPath();c.moveTo(x,y+h);c.lineTo(x+w/2,y);c.lineTo(x+w*.38,y+h);c.closePath();c.fill();c.fillStyle='rgba(255,255,255,0.6)';c.beginPath();c.arc(x+w/2,y+5,2.5,0,Math.PI*2);c.fill();c.fillStyle=P.spkD;c.fillRect(x-4,y+h,w+8,7);c.fillStyle='rgba(255,255,255,0.08)';c.fillRect(x-4,y+h,w+8,2)}
+
+function drawChar(cx2,cy2,r,c,o){c=c||cx;o=o||{};c.save();c.translate(cx2,cy2);c.rotate(o.rot||0);c.scale(o.sq||1,o.st||1);
+c.fillStyle='rgba(92,225,230,0.1)';c.beginPath();c.arc(0,0,r+10,0,Math.PI*2);c.fill();
+c.fillStyle=P.body;c.beginPath();c.arc(0,0,r,0,Math.PI*2);c.fill();
+c.fillStyle=P.belly;c.beginPath();c.arc(0,4,r*.7,0,Math.PI*2);c.fill();
+c.fillStyle='rgba(255,255,255,0.22)';c.beginPath();c.arc(-5,-7,r*.38,0,Math.PI*2);c.fill();
+c.fillStyle='rgba(255,255,255,0.1)';c.beginPath();c.arc(-8,-10,r*.15,0,Math.PI*2);c.fill();
+const ey=-5;const eyShift=o.eyeY||0;
+if(o.bk){c.fillStyle='#fff';c.fillRect(-r*.55,ey-1,r*.42,2.5);c.fillRect(r*.1,ey-1,r*.42,2.5)}
+else{c.fillStyle='#fff';c.beginPath();c.ellipse(-r*.35,ey,r*.26,r*.3,0,0,Math.PI*2);c.fill();c.beginPath();c.ellipse(r*.35,ey,r*.26,r*.3,0,0,Math.PI*2);c.fill();c.fillStyle='#1a1a2e';c.beginPath();c.arc(-r*.25,ey+.5+eyShift,r*.14,0,Math.PI*2);c.fill();c.beginPath();c.arc(r*.45,ey+.5+eyShift,r*.14,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(-r*.3,ey-1.5+eyShift*.3,r*.065,0,Math.PI*2);c.fill();c.beginPath();c.arc(r*.4,ey-1.5+eyShift*.3,r*.065,0,Math.PI*2);c.fill()}
+const mo=o.mo||0;
+if(mo>.3){c.fillStyle='#1a1a2e';c.beginPath();c.ellipse(2,r*.38,r*.2,r*.15*mo,0,0,Math.PI*2);c.fill();c.fillStyle='#ff6b6b';c.beginPath();c.ellipse(2,r*.45,r*.12,r*.06*mo,0,0,Math.PI*2);c.fill()}else{c.strokeStyle=P.dark;c.lineWidth=2;c.lineCap='round';c.beginPath();c.arc(2,r*.28,r*.25,.1*Math.PI,.9*Math.PI);c.stroke()}
+c.fillStyle=P.cheek;c.beginPath();c.ellipse(-r*.7,3,r*.18,r*.14,0,0,Math.PI*2);c.fill();c.beginPath();c.ellipse(r*.74,3,r*.18,r*.14,0,0,Math.PI*2);c.fill();
+c.restore()}
+
+function drawPl(px,py){const ccx=px+pl.w/2,ccy=py+pl.h/2,r=pl.w/2;const sd=Math.max(.2,1-(GY-(py+pl.h))/200);cx.globalAlpha=.18*sd;cx.fillStyle='#000';cx.beginPath();cx.ellipse(ccx,GY+3,r*sd*1.1,5*sd,0,0,Math.PI*2);cx.fill();cx.globalAlpha=1;drawChar(ccx,ccy,r,cx,{sq:pl.sq,st:pl.st,rot:pl.rot,bk:pl.bk,mo:pl.mo})}
+
+function hitT(o){const m=7;if(o.t==='d'){const sw=o.w/2-4;return hitS(o.x,o.y,sw,o.h,m)||hitS(o.x+sw+8,o.y,sw,o.h,m)}return hitS(o.x,o.y,o.w,o.h,m)}
+function hitS(sx,sy,sw,sh,m){return pl.x+pl.w-m>sx+sw*.18+m&&pl.x+m<sx+sw*.82-m&&pl.y+pl.h-m>sy+sh*.2+m&&pl.y+m<sy+sh}
+function chkNM(o){if(o.nm||o.p)return false;if(Math.abs(pl.x+pl.w-(o.x+o.w/2))<24&&Math.abs(pl.y+pl.h-o.y)<24&&!pl.gnd){o.nm=true;return true}return false}
+
+function handleIn(){if(state!=='playing')return;if(pl.gnd){pl.vy=JMP;pl.gnd=false;pl.st=1.28;pl.sq=.78;pl.mo=1;totLeaps++;emit(pl.x+pl.w/2,GY,8,P.body,4,2);sJump()}}
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();handleIn()}});
+cv.addEventListener('touchstart',e=>{e.preventDefault();handleIn()});
+cv.addEventListener('mousedown',()=>{if(state==='playing')handleIn()});
+
+// ========== WALLET CONNECT ==========
+function wbStatus(msg){
+var s=document.getElementById('wb-status');
+s.textContent=msg;s.style.display='block';
+document.getElementById('wb-options').style.display='none'}
+
+function wbReset(){
+document.getElementById('wb-options').style.display='flex';
+document.getElementById('wb-status').style.display='none';
+document.getElementById('wb-title').textContent='Secure your account';
+document.getElementById('wb-desc').textContent='Connect wallet to play anywhere and never lose progress';
+document.getElementById('wb-desc').style.color=''}
+
+function wbNeedName(){
+if(!userToken){wbStatus('Set nickname first');
+setTimeout(function(){showNicknameModal();document.getElementById('wb').classList.remove('show');wbReset()},800);
+return true}return false}
+
+async function verifyWallet(pubKey,signature){
+var v=await apiCall('POST','/wallet/verify',{publicKey:pubKey,signature:signature});
+if(v.error){wbStatus(v.error);setTimeout(wbReset,2000);return false}
+userWallet=pubKey;walletOn=true;saveData();
+showWalletConnected(pubKey);return true}
+
+// --- FREIGHTER ---
+async function connectFreighter(){
+if(wbNeedName())return;
+// Try re-import if not loaded yet (user may have just installed extension)
+if(!window._freighter||!window._freighter.requestAccess){
+try{
+var mod=await import('https://cdn.jsdelivr.net/npm/@stellar/freighter-api/+esm');
+window._freighter={};
+var def=mod.default||mod;
+if(def&&typeof def==='object'){for(var k in def){if(typeof def[k]==='function')window._freighter[k]=def[k]}}
+}catch(e){}}
+if(!window._freighter||!window._freighter.requestAccess){
+wbStatus('Freighter not found');
+setTimeout(function(){window.open('https://freighter.app','_blank');wbReset()},1500);return}
+wbStatus('Checking Freighter...');
+try{
+var fr=window._freighter;
+var connected=await Promise.race([
+fr.isConnected(),
+new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'))},3000)})
+]);
+if(!connected||(typeof connected==='object'&&!connected.isConnected)){
+wbStatus('Installing Freighter...');
+window.open('https://freighter.app','_blank');
+setTimeout(wbReset,2000);return}
+wbStatus('Connecting Freighter...');
+await fr.requestAccess();
+var addrResult=await fr.getAddress();
+var pubKey=typeof addrResult==='string'?addrResult:addrResult.address||addrResult.publicKey;
+if(!pubKey||!pubKey.startsWith('G')){wbStatus('Could not get address');setTimeout(wbReset,2000);return}
+var ch=await apiCall('POST','/wallet/challenge',{publicKey:pubKey});
+if(ch.error){wbStatus(ch.error);setTimeout(wbReset,2000);return}
+var signResult=await fr.signMessage('blobi-leap:'+ch.challenge);
+var sig=typeof signResult==='string'?signResult:signResult.signedMessage||signResult.signature||'';
+await verifyWallet(pubKey,sig);
+}catch(e){console.warn('Freighter:',e);
+if(e.message==='timeout'){wbStatus('Installing Freighter...');window.open('https://freighter.app','_blank');setTimeout(wbReset,2000)}
+else{wbStatus('Cancelled');setTimeout(wbReset,1500)}}}
+
+// --- ALBEDO ---
+async function connectAlbedo(){
+if(wbNeedName())return;
+wbStatus('Opening Albedo...');
+try{
+var pubResult=await window._albedo.publicKey({require_existing:true});
+var pubKey=pubResult.pubkey;
+if(!pubKey||!pubKey.startsWith('G')){wbStatus('Could not get address');setTimeout(wbReset,2000);return}
+var ch=await apiCall('POST','/wallet/challenge',{publicKey:pubKey});
+if(ch.error){wbStatus(ch.error);setTimeout(wbReset,2000);return}
+var signResult=await window._albedo.signMessage({message:'blobi-leap:'+ch.challenge,pubkey:pubKey});
+await verifyWallet(pubKey,signResult.message_signature);
+}catch(e){console.warn('Albedo:',e);wbStatus('Cancelled');setTimeout(wbReset,1500)}}
+
+// --- WALLETCONNECT ---
+async function connectWC(){
+if(wbNeedName())return;
+wbStatus('Loading WalletConnect...');
+try{
+if(!window._wcClient){
+wbStatus('WalletConnect loading...');
+// Dynamic import
+var wcMod=await import('https://esm.sh/@walletconnect/sign-client@2');
+var modalMod=await import('https://esm.sh/@walletconnect/modal@2');
+window._wcClient=await wcMod.SignClient.init({
+projectId:'7796b203b428af9f5986f995902f1113',
+metadata:{name:'Blobi Leap',description:'Casual runner on Stellar',url:'https://blobileap.com',icons:['https://blobileap.com/favicon.ico']}});
+window._wcModal=new modalMod.WalletConnectModal({
+projectId:'7796b203b428af9f5986f995902f1113',
+chains:['stellar:pubnet'],
+themeMode:'dark'});
+console.log('WalletConnect loaded')}
+
+var client=window._wcClient;
+var modal=window._wcModal;
+wbStatus('Scan QR with your wallet...');
+
+// Connect
+var {uri,approval}=await client.connect({
+requiredNamespaces:{stellar:{methods:['stellar_signMessage','stellar_signAndSubmitXDR'],chains:['stellar:pubnet'],events:[]}}});
+
+if(uri){modal.openModal({uri})}
+
+var session=await approval();
+modal.closeModal();
+
+// Extract public key from session
+var accounts=session.namespaces.stellar.accounts;
+if(!accounts||!accounts.length){wbStatus('No account found');setTimeout(wbReset,2000);return}
+// Format: stellar:pubnet:GXXX...
+var pubKey=accounts[0].split(':')[2];
+if(!pubKey||!pubKey.startsWith('G')){wbStatus('Invalid account');setTimeout(wbReset,2000);return}
+
+wbStatus('Verifying wallet...');
+
+// Get challenge
+var ch=await apiCall('POST','/wallet/challenge',{publicKey:pubKey});
+if(ch.error){wbStatus(ch.error);setTimeout(wbReset,2000);return}
+
+// Sign challenge via WalletConnect
+try{
+var sigResult=await client.request({
+topic:session.topic,
+chainId:'stellar:pubnet',
+request:{method:'stellar_signMessage',params:{message:'blobi-leap:'+ch.challenge,pubkey:pubKey}}});
+var sig=typeof sigResult==='string'?sigResult:sigResult.signature||sigResult.signedMessage||JSON.stringify(sigResult);
+await verifyWallet(pubKey,sig);
+}catch(signErr){
+console.warn('WC sign error:',signErr);
+// Fallback: skip signature verification, just link wallet (MVP)
+// The QR scan + session approval already proves wallet ownership
+var v=await apiCall('POST','/wallet/verify',{publicKey:pubKey,signature:'wc-session-verified-'+session.topic});
+if(v.error){wbStatus(v.error);setTimeout(wbReset,2000);return}
+userWallet=pubKey;walletOn=true;saveData();
+showWalletConnected(pubKey)}
+
+// Disconnect session after linking
+try{await client.disconnect({topic:session.topic,reason:{code:6000,message:'done'}})}catch(e){}
+}catch(e){
+console.warn('WC error:',e);
+if(window._wcModal)try{window._wcModal.closeModal()}catch(x){}
+wbStatus(e.message==='User rejected'?'Cancelled':'Connection failed');
+setTimeout(wbReset,2000)}}
+
+function showWalletConnected(addr){
+var short=addr.substring(0,4)+'...'+addr.substring(addr.length-4);
+document.getElementById('wb-title').textContent='Account Secured \u2713';
+document.getElementById('wb-desc').textContent='@'+userNickname+' \u2022 '+short;
+document.getElementById('wb-desc').style.color='#5eead4';
+document.getElementById('wb-options').style.display='none';
+document.getElementById('wb-status').style.display='none';
+document.getElementById('wb').classList.add('show');
+updateUserDisplay();
+setTimeout(function(){document.getElementById('wb').classList.remove('show')},3000)}
+
+function disconnectWallet(){
+apiCall('DELETE','/wallet');
+userWallet=null;walletOn=false;saveData();wbReset()}
+
+function dismissWallet(){walletDismissed=true;document.getElementById('wb').classList.remove('show');wbReset()}
+
+// ========== COSMIC CARD CLAIM ==========
+var claimedCards=JSON.parse(localStorage.getItem('blobi_claimed')||'{}');
+var pendingClaim=null;
+
+var EFFECT_NAMES={star:'Shooting Star',bolt:'Lightning Bolt',ship:'Stellar Rocket',void:'Black Hole',aura:'Aurora Borealis'};
+var EFFECT_ICONS={star:'\u2604',bolt:'\u26A1',ship:'\uD83D\uDE80',void:'\u25C9',aura:'\u25C8'};
+
+function checkCardClaim(){
+if(!userToken)return;
+document.getElementById('cc').style.display='none';
+pendingClaim=null;
+// Check effects seen this game, priority: aura > void > ship > bolt > star
+var effects=[];
+if(sawAurora&&!claimedCards.aura)effects.push('aura');
+if(sawBlackhole&&!claimedCards.void)effects.push('void');
+if(sawRocket&&!claimedCards.ship)effects.push('ship');
+if(sawLightning&&!claimedCards.bolt)effects.push('bolt');
+if(sawStar&&!claimedCards.star)effects.push('star');
+if(effects.length===0)return;
+pendingClaim=effects[0];
+document.getElementById('cc-title').textContent=EFFECT_ICONS[pendingClaim]+' '+EFFECT_NAMES[pendingClaim]+' Discovered!';
+document.getElementById('cc').style.display='block'}
+
+async function claimCard(){
+if(!pendingClaim||!userToken)return;
+var btn=document.getElementById('cc-btn');
+btn.disabled=true;btn.textContent='Claiming...';
+try{
+var res=await apiCall('POST','/cards/claim',{effect:pendingClaim});
+if(res.error){
+btn.textContent=res.error;
+setTimeout(function(){btn.disabled=false;btn.textContent='Claim Card'},2000);
+return}
+claimedCards[pendingClaim]=res.id;
+localStorage.setItem('blobi_claimed',JSON.stringify(claimedCards));
+btn.textContent=res.id+' claimed!';
+btn.style.background='#ffd700';
+document.getElementById('cc-desc').innerHTML='<a href="/card/'+res.id+'" style="color:#5eead4;text-decoration:underline">View your card</a>';
+}catch(e){
+btn.textContent='Error';
+setTimeout(function(){btn.disabled=false;btn.textContent='Claim Card'},2000)}}
+
+// ========== API HELPERS ==========
+async function apiCall(method,path,body){
+const opts={method,headers:{'Content-Type':'application/json'}};
+if(userToken)opts.headers['Authorization']='Bearer '+userToken;
+if(body)opts.body=JSON.stringify(body);
+try{const r=await fetch(API_BASE+'/api'+path,opts);return await r.json()}
+catch(e){console.warn('API error:',e);return{error:'Network error'}}}
+
+// ========== NICKNAME ==========
+function showNicknameModal(){
+document.getElementById('nn-modal').classList.add('show');
+document.getElementById('nn-input').focus();
+document.getElementById('nn-err').textContent='';
+document.getElementById('nn-recover-status').style.display='none';
+document.getElementById('nn-recover-opts').style.display='flex'}
+
+async function submitNickname(){
+const input=document.getElementById('nn-input');
+const btn=document.getElementById('nn-btn');
+const err=document.getElementById('nn-err');
+const nick=input.value.trim();
+if(nick.length<2){err.textContent='Min 2 characters';return}
+if(nick.length>20){err.textContent='Max 20 characters';return}
+btn.disabled=true;btn.textContent='...';
+const res=await apiCall('POST','/auth/nickname',{nickname:nick});
+btn.disabled=false;btn.textContent="LET'S GO";
+if(res.error){err.textContent=res.error==='Nickname taken'?'Name taken, try another':res.error;return}
+userToken=res.token;userNickname=res.user.nickname;userWallet=res.user.wallet||null;
+walletOn=!!userWallet;nickAsked=true;saveData();
+document.getElementById('nn-modal').classList.remove('show');
+updateUserDisplay();
+// sync best score from localStorage to server (catches pre-registration scores)
+if(best>0)apiCall('POST','/scores',{score:best,speed:Math.max(1,1+Math.floor(best/35)*0.1),nearMiss:0,bestCombo:0,survivalTime:Math.max(best,10),totalLeaps:Math.max(best,5),sawStar:false,sawLightning:false,sawRocket:false,sawBlackhole:false,sawAurora:false});
+// also submit last game score if any
+if(score>0&&score!==best)submitScore()}
+
+function skipNickname(){
+nickAsked=true;saveData();
+document.getElementById('nn-modal').classList.remove('show')}
+
+// ========== WALLET RECOVERY ==========
+function recoverStatus(msg){
+document.getElementById('nn-recover-status').style.display='block';
+document.getElementById('nn-recover-status').textContent=msg;
+document.getElementById('nn-recover-opts').style.display='none'}
+
+function recoverReset(){
+document.getElementById('nn-recover-status').style.display='none';
+document.getElementById('nn-recover-opts').style.display='flex';
+document.getElementById('nn-err').textContent=''}
+
+async function recoverWith(method){
+var err=document.getElementById('nn-err');
+err.textContent='';
+var pubKey=null;
+
+try{
+if(method==='freighter'){
+if(!window._freighter||!window._freighter.requestAccess){
+try{var mod=await import('https://cdn.jsdelivr.net/npm/@stellar/freighter-api/+esm');
+window._freighter={};var def=mod.default||mod;
+if(def&&typeof def==='object'){for(var k in def){if(typeof def[k]==='function')window._freighter[k]=def[k]}}}catch(e){}}
+if(!window._freighter||!window._freighter.requestAccess){
+err.textContent='Freighter not found. Install extension first.';return}
+recoverStatus('Connecting Freighter...');
+var connected=await Promise.race([window._freighter.isConnected(),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'))},3000)})]);
+if(!connected||(typeof connected==='object'&&!connected.isConnected)){
+err.textContent='Freighter not detected. Install or open extension.';recoverReset();return}
+await window._freighter.requestAccess();
+var addr=await window._freighter.getAddress();
+pubKey=typeof addr==='string'?addr:addr.address||addr.publicKey;
+}
+
+else if(method==='albedo'){
+if(!window._albedo){err.textContent='Albedo not loaded. Refresh page.';return}
+recoverStatus('Opening Albedo...');
+var albResult=await window._albedo.publicKey({require_existing:true});
+pubKey=albResult.pubkey;
+}
+
+else if(method==='wc'){
+recoverStatus('Loading WalletConnect...');
+if(!window._wcClient){
+var wcMod=await import('https://esm.sh/@walletconnect/sign-client@2');
+var modalMod=await import('https://esm.sh/@walletconnect/modal@2');
+window._wcClient=await wcMod.SignClient.init({
+projectId:'7796b203b428af9f5986f995902f1113',
+metadata:{name:'Blobi Leap',description:'Casual runner on Stellar',url:'https://blobileap.com',icons:[]}});
+window._wcModal=new modalMod.WalletConnectModal({projectId:'7796b203b428af9f5986f995902f1113',chains:['stellar:pubnet'],themeMode:'dark'})}
+recoverStatus('Scan QR with your wallet...');
+var wc=window._wcClient;
+var conn=await wc.connect({requiredNamespaces:{stellar:{methods:['stellar_signMessage'],chains:['stellar:pubnet'],events:[]}}});
+if(conn.uri)window._wcModal.openModal({uri:conn.uri});
+var session=await conn.approval();
+window._wcModal.closeModal();
+var accounts=session.namespaces.stellar.accounts;
+if(accounts&&accounts.length)pubKey=accounts[0].split(':')[2];
+try{await wc.disconnect({topic:session.topic,reason:{code:6000,message:'done'}})}catch(e){}
+}
+
+if(!pubKey||!pubKey.startsWith('G')){
+err.textContent='Could not get wallet address.';recoverReset();return}
+
+recoverStatus('Recovering account...');
+var res=await apiCall('POST','/auth/recover',{publicKey:pubKey});
+if(res.error){
+err.textContent=res.error;recoverReset();return}
+
+// Success
+userToken=res.token;userNickname=res.user.nickname;userWallet=res.user.wallet;
+walletOn=true;nickAsked=true;saveData();
+document.getElementById('nn-modal').classList.remove('show');
+updateUserDisplay();
+
+}catch(e){
+console.warn('Recover error:',e);
+var msg=e.message||'Recovery failed';
+if(msg==='timeout')msg='Wallet not detected';
+if(msg==='User rejected')msg='Cancelled';
+err.textContent=msg;recoverReset()}}
+
+// ========== SCORE SUBMIT ==========
+async function submitScore(){
+if(!userToken||score<=0)return;
+const res=await apiCall('POST','/scores',{
+score,speed:gameSpd,nearMiss:nmTotal,bestCombo:bestCmb,
+survivalTime:survTime,totalLeaps:totLeaps,
+sawStar,sawLightning,sawRocket,sawBlackhole,sawAurora});
+if(res.rank)console.log('Score submitted, rank:',res.rank)}
+
+// ========== LEADERBOARD ==========
+let lbPeriod='daily';
+function openLB(){
+document.getElementById('lb-modal').classList.add('show');
+loadLB('daily')}
+
+function closeLB(){document.getElementById('lb-modal').classList.remove('show')}
+
+async function loadLB(period){
+lbPeriod=period;
+document.querySelectorAll('.lb-tab').forEach(t=>{
+t.classList.toggle('active',t.textContent===(period==='daily'?'Today':period==='weekly'?'Week':'All Time'))});
+document.getElementById('lb-list').innerHTML='<div class="lb-empty">Loading...</div>';
+document.getElementById('lb-myrank').textContent='';
+const res=await apiCall('GET','/leaderboard/'+period);
+if(!res||res.error){document.getElementById('lb-list').innerHTML='<div class="lb-empty">'+(res&&res.error?res.error:'Could not load')+'</div>';return}
+const list=document.getElementById('lb-list');
+if(!res.leaderboard||res.leaderboard.length===0){
+list.innerHTML='<div class="lb-empty">No scores yet. Be the first!</div>';return}
+list.innerHTML=res.leaderboard.map(function(row){
+var isMe=userNickname&&row.nickname===userNickname;
+var rankCls=row.rank===1?'top1':row.rank===2?'top2':row.rank===3?'top3':'';
+var walletBadge=row.hasWallet?'<span class="wallet-icon">\u26A1</span>':'';
+return '<div class="lb-row'+(isMe?' me':'')+'">'+
+'<div class="lb-rank '+rankCls+'">'+(row.rank<=3?['','🥇','🥈','🥉'][row.rank]:row.rank)+'</div>'+
+'<div class="lb-name">'+row.nickname+walletBadge+'</div>'+
+'<div class="lb-sc">'+row.score+'</div></div>'}).join('');
+if(res.myRank){document.getElementById('lb-myrank').textContent='Your rank: #'+res.myRank}}
+
+// ========== SHARE CARD ==========
+function genCard(){
+var cv2=document.getElementById('scv'),c=cv2.getContext('2d');
+var cw=600,ch=640,sc=2;
+cv2.width=cw*sc;cv2.height=ch*sc;
+cv2.style.width=cw+'px';cv2.style.height='auto';
+c.setTransform(sc,0,0,sc,0,0);
+
+var s=best;
+var tier,tierColor,tierGlow,tierBg,tierLabel,tierStars;
+if(s>=150){tier='mythic';tierColor='#ff6bff';tierGlow='rgba(255,107,255,0.5)';tierBg='#1a0a1a';tierLabel='MYTHIC';tierStars='\u2726'}
+else if(s>=100){tier='legend';tierColor='#ffd700';tierGlow='rgba(255,215,0,0.5)';tierBg='#1a1510';tierLabel='LEGEND';tierStars='\u2605\u2605\u2605\u2605\u2605'}
+else if(s>=75){tier='master';tierColor='#c084fc';tierGlow='rgba(192,132,252,0.4)';tierBg='#1a1028';tierLabel='MASTER';tierStars='\u2605\u2605\u2605\u2605'}
+else if(s>=50){tier='pro';tierColor='#ffd700';tierGlow='rgba(255,215,0,0.35)';tierBg='#1a1510';tierLabel='PRO';tierStars='\u2605\u2605\u2605'}
+else if(s>=25){tier='runner';tierColor='#5eead4';tierGlow='rgba(94,234,212,0.35)';tierBg='#101a1a';tierLabel='RUNNER';tierStars='\u2605\u2605'}
+else if(s>=10){tier='rookie';tierColor='#e2e8f0';tierGlow='rgba(226,232,240,0.2)';tierBg='#181820';tierLabel='ROOKIE';tierStars='\u2605'}
+else{tier='newbie';tierColor='#94a3b8';tierGlow='rgba(148,163,184,0.15)';tierBg='#1c1c1e';tierLabel='';tierStars=''}
+
+function rrp(x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath()}
+var R=14;
+c.save();rrp(0,0,cw,ch,R);c.clip();
+c.fillStyle=tierBg||'#1c1c1e';c.fillRect(0,0,cw,ch);
+
+// border — mythic gets rainbow
+if(tier==='mythic'){
+var rbg=c.createLinearGradient(0,0,cw,ch);
+rbg.addColorStop(0,'#ff6bff');rbg.addColorStop(0.25,'#ffd700');rbg.addColorStop(0.5,'#5eead4');rbg.addColorStop(0.75,'#6baaff');rbg.addColorStop(1,'#ff6bff');
+c.strokeStyle=rbg;c.lineWidth=6;rrp(3,3,cw-6,ch-6,R-1);c.stroke();
+c.strokeStyle='rgba(255,107,255,0.6)';c.lineWidth=1.5;rrp(5,5,cw-10,ch-10,R-2);c.stroke()
+}else{
+c.strokeStyle=tierGlow;c.lineWidth=6;rrp(3,3,cw-6,ch-6,R-1);c.stroke();
+c.strokeStyle=tierColor;c.lineWidth=1.5;rrp(5,5,cw-10,ch-10,R-2);c.stroke()}
+
+// tier badge
+if(tierLabel){
+c.font='700 14px Nunito,sans-serif';
+var tl=tierLabel+' '+tierStars;
+var tbw=c.measureText(tl).width+20;
+rrp(cw-tbw-22,40,tbw,28,14);
+var badgeColor=tier==='mythic'?'rgba(255,107,255,':'rgba(255,215,0,';
+c.fillStyle=badgeColor+'0.12)';c.fill();
+c.strokeStyle=badgeColor+'0.4)';c.lineWidth=1;c.stroke();
+c.textAlign='center';c.textBaseline='middle';
+c.fillStyle=tierColor;c.fillText(tl,cw-tbw/2-22,54)}
+
+// MY BEST
+c.textAlign='center';c.textBaseline='top';
+c.font='700 16px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.4)';
+c.fillText('M Y   B E S T',cw/2,46);
+
+// === MINI GAME SCENE — left side, wider ===
+var sceneX=20,sceneY=75,sceneW=320,sceneH=200;
+c.save();
+c.beginPath();c.rect(sceneX,sceneY,sceneW,sceneH);c.clip();
+
+// sky gradient
+var skyG=c.createLinearGradient(sceneX,sceneY,sceneX,sceneY+sceneH*0.75);
+skyG.addColorStop(0,'#16213e');skyG.addColorStop(0.6,'#1a1a2e');skyG.addColorStop(1,'#0f3460');
+c.fillStyle=skyG;c.fillRect(sceneX,sceneY,sceneW,sceneH);
+
+// stars
+for(var si=0;si<30;si++){
+c.fillStyle='rgba(255,255,255,'+(Math.random()*0.3+0.1)+')';
+c.beginPath();c.arc(sceneX+Math.random()*sceneW,sceneY+Math.random()*sceneH*0.6,Math.random()*1.2+0.3,0,Math.PI*2);c.fill()}
+
+// mountains
+c.fillStyle='#162447';
+var mGY=sceneY+sceneH*0.72;
+[[sceneX+50,40],[sceneX+120,55],[sceneX+200,48],[sceneX+280,35]].forEach(function(m){
+c.beginPath();c.moveTo(m[0]-45,mGY);c.lineTo(m[0],mGY-m[1]);c.lineTo(m[0]+45,mGY);c.fill()});
+c.fillStyle='rgba(255,255,255,0.04)';
+[[sceneX+120,55],[sceneX+200,48]].forEach(function(m){
+c.beginPath();c.moveTo(m[0]-5,mGY-m[1]*0.7);c.lineTo(m[0],mGY-m[1]);c.lineTo(m[0]+5,mGY-m[1]*0.7);c.fill()});
+
+// ground
+c.fillStyle='#0d1b2a';c.fillRect(sceneX,mGY,sceneW,sceneH-mGY+sceneY);
+c.fillStyle='#1b2838';c.fillRect(sceneX,mGY,sceneW,5);
+c.fillStyle='#2a3f5f';c.fillRect(sceneX,mGY,sceneW,2);
+
+// grass tufts
+for(var gx=sceneX+5;gx<sceneX+sceneW;gx+=10){
+c.fillStyle='rgba(30,86,49,0.35)';
+var gh=2+Math.sin(gx*0.4)*1.5;
+c.beginPath();c.moveTo(gx-2,mGY);c.lineTo(gx,mGY-gh);c.lineTo(gx+2,mGY);c.fill()}
+
+// spikes
+[sceneX+100,sceneX+170,sceneX+240].forEach(function(sx,i){
+var sw=10+i*2,sh=16+i*3,sy=mGY-sh;
+drawSpk(sx,sy,sw,sh,c)});
+
+// Blobi — jumping, airborne with trail
+var blobX=sceneX+55,blobY=mGY-45,blobR=16;
+for(var ti=4;ti>=1;ti--){
+c.globalAlpha=0.08*ti;c.fillStyle=P.body;
+c.beginPath();c.arc(blobX-ti*8,blobY+ti*5,blobR-ti*2,0,Math.PI*2);c.fill()}
+c.globalAlpha=1;
+c.globalAlpha=0.15;c.fillStyle='#000';
+c.beginPath();c.ellipse(blobX,mGY+2,blobR*0.7,3,0,0,Math.PI*2);c.fill();
+c.globalAlpha=1;
+drawChar(blobX,blobY,blobR,c,{rot:-0.15,mo:0.5,eyeY:-2});
+
+// Crown on Blobi for legend/mythic
+if(tier==='legend'){
+c.fillStyle='#ffd700';
+c.beginPath();c.moveTo(blobX-10,blobY-blobR-2);c.lineTo(blobX-13,blobY-blobR-14);c.lineTo(blobX-5,blobY-blobR-8);c.lineTo(blobX,blobY-blobR-16);c.lineTo(blobX+5,blobY-blobR-8);c.lineTo(blobX+13,blobY-blobR-14);c.lineTo(blobX+10,blobY-blobR-2);c.closePath();c.fill();
+c.fillStyle='rgba(255,255,255,0.4)';c.beginPath();c.arc(blobX,blobY-blobR-12,1.5,0,Math.PI*2);c.fill()}
+if(tier==='mythic'){
+var crG=c.createLinearGradient(blobX-13,blobY-blobR-16,blobX+13,blobY-blobR);
+crG.addColorStop(0,'#ff6bff');crG.addColorStop(0.5,'#ffd700');crG.addColorStop(1,'#5eead4');
+c.fillStyle=crG;
+c.beginPath();c.moveTo(blobX-10,blobY-blobR-2);c.lineTo(blobX-14,blobY-blobR-16);c.lineTo(blobX-5,blobY-blobR-9);c.lineTo(blobX,blobY-blobR-18);c.lineTo(blobX+5,blobY-blobR-9);c.lineTo(blobX+14,blobY-blobR-16);c.lineTo(blobX+10,blobY-blobR-2);c.closePath();c.fill();
+c.fillStyle='rgba(255,255,255,0.5)';c.beginPath();c.arc(blobX,blobY-blobR-14,1.8,0,Math.PI*2);c.fill()}
+
+c.restore();
+
+// vignette fade — 4 linear gradients from each edge into card bg
+var bg=tierBg||"#1c1c1e";var f=50;// fade width px
+// left edge
+var vl=c.createLinearGradient(sceneX,0,sceneX+f,0);
+vl.addColorStop(0,bg);vl.addColorStop(1,'rgba(28,28,30,0)');
+c.fillStyle=vl;c.fillRect(sceneX,sceneY,f,sceneH);
+// right edge
+var vr=c.createLinearGradient(sceneX+sceneW-f,0,sceneX+sceneW,0);
+vr.addColorStop(0,'rgba(28,28,30,0)');vr.addColorStop(1,bg);
+c.fillStyle=vr;c.fillRect(sceneX+sceneW-f,sceneY,f,sceneH);
+// top edge
+var vt=c.createLinearGradient(0,sceneY,0,sceneY+f);
+vt.addColorStop(0,bg);vt.addColorStop(1,'rgba(28,28,30,0)');
+c.fillStyle=vt;c.fillRect(sceneX,sceneY,sceneW,f);
+// bottom edge
+var vb=c.createLinearGradient(0,sceneY+sceneH-f,0,sceneY+sceneH);
+vb.addColorStop(0,'rgba(28,28,30,0)');vb.addColorStop(1,bg);
+c.fillStyle=vb;c.fillRect(sceneX,sceneY+sceneH-f,sceneW,f);
+
+// sparkle particles for pro+
+if(tier==='pro'||tier==='master'||tier==='legend'||tier==='mythic'){
+var spkCount=tier==='mythic'?35:tier==='legend'?25:tier==='master'?16:10;
+var spkColor=tier==='mythic'?['255,107,255','94,234,212']:tier==='master'?['192,132,252','192,132,252']:['255,215,0','255,215,0'];
+for(var sp=0;sp<spkCount;sp++){
+var spx=Math.random()*cw,spy=Math.random()*ch*0.4;
+c.fillStyle='rgba('+spkColor[sp%2]+','+(0.1+Math.random()*0.3)+')';
+c.beginPath();c.arc(spx,spy,0.8+Math.random()*2,0,Math.PI*2);c.fill()}}
+
+// mythic aura ring
+if(tier==='mythic'){
+c.strokeStyle='rgba(255,107,255,0.12)';c.lineWidth=2;c.beginPath();c.arc(500,130,90,0,Math.PI*2);c.stroke();
+c.strokeStyle='rgba(94,234,212,0.08)';c.lineWidth=1;c.beginPath();c.arc(500,130,100,0,Math.PI*2);c.stroke()}
+
+// === SCORE — pushed right ===
+c.textAlign='center';c.textBaseline='top';
+c.font='900 130px Nunito,sans-serif';c.fillStyle=tierColor;
+c.shadowColor=tierGlow;c.shadowBlur=25;
+c.fillText(String(s),500,80);c.shadowBlur=0;
+
+var isNewBest=score>=best&&score>0;
+if(isNewBest){
+c.font='800 20px Nunito,sans-serif';c.fillStyle='#ffd700';
+c.fillText('NEW BEST!',500,215)}
+
+// === STATS ROW 1 ===
+var pad=28,gap=10;
+var r1Y=isNewBest?255:245;
+var rowW=cw-pad*2;
+var bH=58;
+
+rrp(pad,r1Y,rowW,bH,10);c.fillStyle='rgba(255,255,255,0.06)';c.fill();
+
+var col3=rowW/3;
+c.textAlign='center';c.textBaseline='top';
+c.font='900 26px Nunito,sans-serif';c.fillStyle='#fff';
+c.fillText(String(score),pad+col3*0.5,r1Y+8);
+c.fillText(gameSpd.toFixed(1)+'x',pad+col3*1.5,r1Y+8);
+c.fillText(String(totalG),pad+col3*2.5,r1Y+8);
+
+c.font='600 10px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.35)';
+c.fillText('THIS RUN',pad+col3*0.5,r1Y+38);
+c.fillText('TOP SPEED',pad+col3*1.5,r1Y+38);
+c.fillText('GAMES',pad+col3*2.5,r1Y+38);
+
+// === STATS ROW 2 ===
+var r2Y=r1Y+bH+gap;
+rrp(pad,r2Y,rowW,bH,10);c.fillStyle='rgba(255,255,255,0.06)';c.fill();
+
+var col4=rowW/4;
+c.font='900 24px Nunito,sans-serif';c.fillStyle='#fff';
+c.fillText(String(nmTotal),pad+col4*0.5,r2Y+8);
+c.fillText(bestCmb>1?'x'+bestCmb:'-',pad+col4*1.5,r2Y+8);
+c.fillText(survTime+'s',pad+col4*2.5,r2Y+8);
+c.fillText(String(totLeaps),pad+col4*3.5,r2Y+8);
+
+c.font='600 9px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.35)';
+c.fillText('NEAR MISS',pad+col4*0.5,r2Y+38);
+c.fillText('BEST COMBO',pad+col4*1.5,r2Y+38);
+c.fillText('SURVIVED',pad+col4*2.5,r2Y+38);
+c.fillText('LEAPS',pad+col4*3.5,r2Y+38);
+
+// === COSMIC SIGHTINGS ===
+var csY=r2Y+bH+24;
+c.font='600 12px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.3)';
+c.textAlign='center';c.textBaseline='top';
+c.fillText('C O S M I C   S I G H T I N G S',cw/2,csY);
+
+var iY=csY+24;
+var icons=[sawStar,sawLightning,sawRocket,sawBlackhole,sawAurora];
+var iconNames=['Star','Bolt','Ship','Void','Aura'];
+for(var ii=0;ii<5;ii++){
+var ix=cw/2-80+ii*40;
+c.fillStyle=icons[ii]?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.03)';
+c.beginPath();c.arc(ix,iY+8,17,0,Math.PI*2);c.fill();
+c.strokeStyle=icons[ii]?tierColor+'55':'rgba(255,255,255,0.06)';c.lineWidth=1;
+c.beginPath();c.arc(ix,iY+8,17,0,Math.PI*2);c.stroke();
+var ia=icons[ii]?1:0.15;c.globalAlpha=ia;
+c.save();c.translate(ix,iY+8);
+if(ii===0){c.strokeStyle='#fff';c.lineWidth=1.5;c.lineCap='round';c.beginPath();c.moveTo(6,-6);c.lineTo(-8,4);c.stroke();c.fillStyle='#fff';c.beginPath();c.arc(6,-6,2,0,Math.PI*2);c.fill();c.strokeStyle='rgba(92,225,230,0.6)';c.lineWidth=1;c.beginPath();c.moveTo(4,-4);c.lineTo(-6,3);c.stroke()}
+else if(ii===1){c.fillStyle='#ffd700';c.beginPath();c.moveTo(-2,-10);c.lineTo(-6,-1);c.lineTo(-1,-1);c.lineTo(-4,10);c.lineTo(6,0);c.lineTo(1,0);c.lineTo(4,-10);c.closePath();c.fill()}
+else if(ii===2){c.fillStyle='#c0c8d8';c.beginPath();c.ellipse(0,0,5,9,0,0,Math.PI*2);c.fill();c.fillStyle='#5eead4';c.beginPath();c.moveTo(-3,-9);c.lineTo(0,-14);c.lineTo(3,-9);c.closePath();c.fill();c.beginPath();c.moveTo(-5,5);c.lineTo(-8,9);c.lineTo(-4,7);c.closePath();c.fill();c.beginPath();c.moveTo(5,5);c.lineTo(8,9);c.lineTo(4,7);c.closePath();c.fill();c.fillStyle='rgba(255,180,50,0.6)';c.beginPath();c.moveTo(-2,9);c.lineTo(0,14);c.lineTo(2,9);c.closePath();c.fill()}
+else if(ii===3){c.fillStyle='#000';c.beginPath();c.arc(0,0,6,0,Math.PI*2);c.fill();c.strokeStyle='rgba(255,240,200,0.7)';c.lineWidth=1;c.beginPath();c.arc(0,0,7,0,Math.PI*2);c.stroke();c.strokeStyle='rgba(255,220,180,0.4)';c.lineWidth=2;c.beginPath();c.ellipse(0,0,11,3,0,0,Math.PI*2);c.stroke()}
+else if(ii===4){for(var ar=0;ar<5;ar++){var arx=-6+ar*3;var arh=8+Math.sin(ar*1.2)*4;c.fillStyle='rgba(80,255,180,'+(0.3+ar*0.1)+')';c.fillRect(arx,-arh,2,arh*2)}}
+c.restore();c.globalAlpha=1;
+c.font='600 8px Nunito,sans-serif';c.fillStyle=icons[ii]?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.08)';
+c.textAlign='center';c.textBaseline='top';c.fillText(iconNames[ii],ix,iY+30)}
+
+// === FLAVOR TEXT ===
+c.font='italic 13px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.2)';
+c.textAlign='center';c.textBaseline='top';
+c.fillText('\u201C'+lastFlavor+'\u201D',cw/2,iY+46);
+
+// === IDENTITY ===
+var idText=getIdentityText();
+if(idText){
+c.font='600 11px Nunito,sans-serif';c.fillStyle='rgba(94,225,230,0.5)';
+c.textAlign='center';c.textBaseline='top';
+c.fillText(idText,cw/2,iY+68)}
+
+// === BOTTOM BAR ===
+c.fillStyle='rgba(0,0,0,0.4)';c.fillRect(0,ch-60,cw,60);
+c.textAlign='left';c.textBaseline='top';
+c.font='800 18px Nunito,sans-serif';c.fillStyle='#5eead4';c.fillText('BLOBI LEAP',24,ch-48);
+c.font='600 10px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.25)';c.fillText('Built on Stellar',24,ch-26);
+c.textAlign='right';
+c.font='600 12px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.4)';c.fillText('Can you beat Blobi?',cw-24,ch-48);
+c.font='800 15px Nunito,sans-serif';c.fillStyle='#ffd700';c.fillText('blobileap.com',cw-24,ch-26);
+
+c.textAlign='center';c.restore()}
+function openShare(){genCard();document.getElementById('so').classList.add('show')}
+function clShare(){document.getElementById('so').classList.remove('show')}
+function dlCard(){const cv2=document.getElementById('scv'),a=document.createElement('a');a.download='blobi-leap-'+best+'.png';a.href=cv2.toDataURL('image/png');a.click()}
+
+// ========== GAME ==========
+function startGame(){
+initAudio();
+if(AC&&AC.state==='suspended')AC.resume();
+document.getElementById('ss').style.display='none';
+document.getElementById('ds').classList.remove('show');
+document.getElementById('so').classList.remove('show');
+document.getElementById('wb').classList.remove('show');
+document.getElementById('cc').style.display='none';
+score=0;gameSpd=1;fc=0;obs=[];parts=[];confetti=[];scoreCountUp={active:false,target:0,current:0};
+nmTotal=0;bestCmb=0;survTime=0;totLeaps=0;
+sawStar=false;sawLightning=false;sawRocket=false;sawBlackhole=false;sawAurora=false;
+pl.y=GY-pl.h;pl.vy=0;pl.gnd=true;pl.tr=[];pl.alive=true;pl.sq=1;pl.st=1;pl.rot=0;pl.mo=0;
+gOff=0;shake=0;nmCombo=0;passedBest=false;totalG++;streak++;state='playing';saveData();
+document.getElementById('score-display').textContent='0';
+document.getElementById('score-display').style.color='';
+document.getElementById('score-display').className='';
+document.getElementById('hud-newbest').classList.remove('show');
+document.getElementById('hud-newbest').textContent='';
+document.getElementById('spd').style.opacity='1';
+upB();upS();startBg()}
+
+function die(){
+state='dead';pl.alive=false;shake=16;survTime=Math.round(fc/60);
+genFlavor();
+emit(pl.x+pl.w/2,pl.y+pl.h/2,35,P.spk,10,3);
+emit(pl.x+pl.w/2,pl.y+pl.h/2,20,'#fff',7,2);
+emit(pl.x+pl.w/2,pl.y+pl.h/2,12,P.gold,6,2);
+sDie();stopBg();
+if(navigator.vibrate)navigator.vibrate([30,20,60]);
+let isNew=false;if(score>best){best=score;isNew=true;setTimeout(sCelebrate,500)}
+saveData();
+const msg=dMsg(score,best,isNew);
+const msgColor=isNew?'#ffd700':score>=best-3&&score<best&&best>0?'#ffd700':score<5?'rgba(255,255,255,0.4)':'#5eead4';
+
+setTimeout(()=>{
+if(isNew){
+// count-up animation for new record
+scoreCountUp={active:true,target:score,current:0};
+document.getElementById('d-sc').textContent='0';
+document.getElementById('d-sc').style.color='#ffd700';
+// confetti burst — 3 waves
+spawnConfetti(40);
+setTimeout(()=>spawnConfetti(25),300);
+setTimeout(()=>spawnConfetti(15),600);
+} else {
+document.getElementById('d-sc').textContent=score;
+document.getElementById('d-sc').style.color='#fff';
+}
+document.getElementById('d-nb').textContent=isNew?'NEW BEST!':'';
+document.getElementById('d-nb').style.color='#ffd700';
+document.getElementById('d-msg').textContent=msg;
+document.getElementById('d-msg').style.color=msgColor;
+document.getElementById('d-b').textContent=best;
+document.getElementById('d-sp').textContent=gameSpd.toFixed(1)+'x';
+document.getElementById('d-g').textContent=totalG;
+document.getElementById('ds').classList.add('show');
+
+// wallet prompt — integrated INTO death screen
+if(walletOn&&userWallet){
+var ws=userWallet.substring(0,4)+'...'+userWallet.substring(userWallet.length-4);
+document.getElementById('wb-title').textContent='Account Secured \u2713';
+document.getElementById('wb-desc').textContent='@'+userNickname+' \u2022 '+ws;
+document.getElementById('wb-desc').style.color='#5eead4';
+document.getElementById('wb-options').style.display='none';
+document.getElementById('wb-status').style.display='none';
+}else if(totalG>=WALLET_AFTER&&!walletOn&&!walletDismissed){
+wbReset();
+document.getElementById('wb').classList.add('show')}
+
+// submit score to server
+submitScore();
+
+// check cosmic card claim
+checkCardClaim();
+
+// prompt nickname after 3 games if not registered
+if(totalG===3&&!userNickname&&!nickAsked){setTimeout(showNicknameModal,1200)}
+},500)}
+
+function dMsg(s,b,n){if(n&&s>10)return'Blobi set a new record!';if(b>0&&s>=b-3&&s<b)return'Just '+(b-s)+' away from Blobi\'s best!';if(s===0)return'Tap or Space to leap!';if(s<5)return'Blobi is warming up!';if(s<15)return'Nice leap!';if(s<30)return'Blobi is on fire!';return'Legendary Blobi!'}
+function showNM(){nmCombo++;nmTotal++;bestCmb=Math.max(bestCmb,nmCombo);const el=document.getElementById('nm');const t=['CLOSE!','NARROW!','RISKY!','WOW!'];el.textContent=t[Math.floor(Math.random()*t.length)];el.classList.add('show');setTimeout(()=>el.classList.remove('show'),500);if(nmCombo>1){const c=document.getElementById('cb');c.textContent='x'+nmCombo+' COMBO!';c.classList.add('show');setTimeout(()=>c.classList.remove('show'),800)}if(nmCombo===3){spawnStar('small')}sNM()}
+function upB(){document.getElementById('best-display').textContent=best>0?'Best: '+best:''}
+function upS(){document.getElementById('stk').textContent=totalG>1?'Game #'+totalG:''}
+function checkSurpass(){
+if(passedBest||best<=0||score<=best)return;
+passedBest=true;
+const sd=document.getElementById('score-display');
+sd.textContent=score;
+sd.classList.add('gold');
+sd.classList.remove('pulse');void sd.offsetWidth;sd.classList.add('pulse');
+document.getElementById('hud-newbest').textContent='NEW BEST!';
+document.getElementById('hud-newbest').classList.add('show');
+sSurpass();
+emit(pl.x+pl.w/2,pl.y,20,P.gold,6,3);
+spawnStar('big')}
+
+function spawnStar(size){
+const sx=W*0.2+Math.random()*W*0.6;
+const sy=8+Math.random()*GY*0.3;
+const presets={
+small:{vx:-3.5-Math.random()*1.5,vy:1.5+Math.random()*0.8,len:35+Math.random()*25,bright:0.5+Math.random()*0.2},
+normal:{vx:-2.5-Math.random()*1.5,vy:1+Math.random()*1,len:55+Math.random()*40,bright:0.6+Math.random()*0.25},
+big:{vx:-1.8-Math.random()*1.2,vy:0.7+Math.random()*0.8,len:80+Math.random()*50,bright:0.8+Math.random()*0.2}};
+const p=presets[size]||presets.normal;
+shootingStars.push({x:sx,y:sy,vx:p.vx,vy:p.vy,life:1,len:p.len,bright:p.bright});if(state==='playing')sawStar=true}
+
+function spawnConfetti(count){
+const colors=['#ffd700','#5eead4','#ff6b6b','#ff8787','#fbbf24','#fff','#a78bfa','#60a5fa'];
+for(let i=0;i<count;i++){
+confetti.push({
+x:W*0.3+Math.random()*W*0.4,
+y:H*0.25+Math.random()*H*0.1,
+vx:(Math.random()-0.5)*6,
+vy:-3-Math.random()*4,
+rot:Math.random()*6.28,
+rotV:(Math.random()-0.5)*0.3,
+w:4+Math.random()*4,
+h:2+Math.random()*2,
+color:colors[Math.floor(Math.random()*colors.length)],
+life:1,
+decay:0.005+Math.random()*0.005,
+gravity:0.08+Math.random()*0.04})}}
+
+function randomAuroraColors(){
+const palettes=[
+// classic green + purple
+{top:[100,60,200],mid:[60,220,160],bot:[80,255,180],accent:[120,255,200]},
+// vivid pink + magenta
+{top:[200,50,150],mid:[255,80,180],bot:[255,120,200],accent:[255,180,220]},
+// electric blue + cyan
+{top:[40,60,220],mid:[50,180,255],bot:[80,220,255],accent:[140,240,255]},
+// red + orange aurora (rare solar storm)
+{top:[200,40,60],mid:[255,100,50],bot:[255,160,80],accent:[255,200,120]},
+// neon green + yellow
+{top:[80,180,40],mid:[120,255,60],bot:[180,255,80],accent:[220,255,140]},
+// deep purple + blue
+{top:[140,40,220],mid:[100,80,255],bot:[140,120,255],accent:[180,160,255]},
+// teal + emerald
+{top:[20,120,140],mid:[30,200,160],bot:[50,255,190],accent:[100,255,210]},
+// pink + purple + blue mix
+{top:[220,60,180],mid:[160,80,240],bot:[100,140,255],accent:[160,200,255]}
+];
+return palettes[Math.floor(Math.random()*palettes.length)]}
+
+// ========== UPDATE ==========
+function update(){
+if(state!=='playing')return;fc++;const sp=basSpd*gameSpd;gOff=(gOff+sp)%24;
+if(fc%350===0){gameSpd+=.1;const b=document.getElementById('spd');b.textContent=gameSpd.toFixed(1)+'x';b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),200);sSU();if(Math.abs(gameSpd-2.0)<0.05){spawnStar('normal')}}
+const last=obs[obs.length-1];const gap=Math.max(120,200-gameSpd*14);
+if(!last||last.x<W-gap-Math.random()*60)spawnO();
+pl.vy+=GR;if(pl.vy>MF)pl.vy=MF;pl.y+=pl.vy;
+if(pl.y>=GY-pl.h){if(!pl.gnd){pl.sq=1.32;pl.st=.72;sLand();emit(pl.x+pl.w/2,GY,5,'rgba(255,255,255,0.25)',3,1)}pl.y=GY-pl.h;pl.vy=0;pl.gnd=true;pl.mo=0;nmCombo=0}
+pl.sq+=(1-pl.sq)*.14;pl.st+=(1-pl.st)*.14;
+pl.rot+=((pl.gnd?0:pl.vy*.014)-pl.rot)*.12;
+if(!pl.gnd&&pl.vy>2)pl.mo=Math.min(1,pl.vy*.07);
+pl.bT++;if(pl.bT>160+Math.random()*120){pl.bk=true;pl.bT=-8}if(pl.bT===0)pl.bk=false;
+if(fc%2===0){pl.tr.push({x:pl.x+pl.w/2,y:pl.y+pl.h/2,a:.35,s:pl.w*.35});if(pl.tr.length>10)pl.tr.shift()}
+pl.tr.forEach(t=>{t.a-=.035;t.s-=.3});pl.tr=pl.tr.filter(t=>t.a>0);
+for(let i=obs.length-1;i>=0;i--){const o=obs[i];o.x-=sp;
+if(hitT(o)){die();return}
+if(chkNM(o)){showNM();score++;document.getElementById('score-display').textContent=score;checkSurpass();emit(pl.x+pl.w,pl.y,12,P.gold,5,2)}
+if(!o.p&&o.x+o.w<pl.x){o.p=true;score++;
+const sd=document.getElementById('score-display');
+sd.textContent=score;sScore();
+checkSurpass();
+// score milestone — shooting star every 25 points
+if(score>0&&score%25===0){spawnStar('normal')}
+if(passedBest&&score%5===0){
+sd.classList.remove('pulse');void sd.offsetWidth;sd.classList.add('pulse');
+emit(pl.x,pl.y+pl.h/2,6,P.gold,3,2)}
+emit(pl.x,pl.y+pl.h/2,4,P.gold,2,1)}
+if(o.x+o.w<-40)obs.splice(i,1)}
+stars.forEach(s=>{s.x-=s.sp*gameSpd;s.tw+=s.ts;if(s.x<-5)s.x=W+5});
+mts.forEach(m=>{m.x-=(m.l===0?.3:.15)*gameSpd;if(m.x+m.w<-20)m.x=W+Math.random()*100});
+for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.life-=p.dc;if(p.life<=0)parts.splice(i,1)}
+// shooting stars — very rare random during gameplay (~60-90s avg)
+if(Math.random()<0.0003){spawnStar('normal')}
+for(let i=shootingStars.length-1;i>=0;i--){const s=shootingStars[i];s.x+=s.vx;s.y+=s.vy;s.life-=0.008;if(s.life<=0)shootingStars.splice(i,1)}
+// aurora + rocket + blackhole + lightning during gameplay — PRODUCTION
+aurora.phase+=0.008;
+// aurora: ~0.8% per game base, x3 boost when breaking record significantly
+const auroraRate=passedBest&&score>=30&&(score-best)>=Math.max(5,Math.floor(best*0.1))?0.000012:0.000004;
+if(!aurora.active&&Math.random()<auroraRate){aurora.active=true;aurora.timer=0;aurora.alpha=0;aurora.colors=randomAuroraColors();sawAurora=true}
+if(aurora.active){aurora.timer++;aurora.alpha=aurora.timer<150?aurora.timer/150:aurora.timer>900?(1050-aurora.timer)/150:1;aurora.phase+=0.01;if(aurora.timer>1050)aurora.active=false}
+// rocket: ~3.5 min avg
+if(!rocket.active&&Math.random()<0.00008){rocket.active=true;rocket.x=W+20;rocket.y=30+Math.random()*GY*0.2;rocket.timer=0;sawRocket=true}
+if(rocket.active){rocket.x-=0.5;const rwy=Math.sin(rocket.timer*0.012)*3.5+Math.sin(rocket.timer*0.007)*1.5;rocket.y+=rwy*0.02;rocket.timer++;if(rocket.x<-30)rocket.active=false}
+// blackhole: ~1% per game (~huyền thoại)
+if(!blackhole.active&&Math.random()<0.000005){blackhole.active=true;blackhole.x=W+80;blackhole.y=GY*0.15+Math.random()*GY*0.2;blackhole.timer=0;blackhole.rot=0;blackhole.size=0;sawBlackhole=true}
+if(blackhole.active){blackhole.x-=0.2;blackhole.rot+=0.015;blackhole.timer++;blackhole.size=Math.min(1,blackhole.timer<90?blackhole.timer/90:blackhole.x<60?(blackhole.x+40)/100:1);if(blackhole.x<-100)blackhole.active=false}
+// lightning: ~4.5 min avg
+if(!lightning.active&&Math.random()<0.00006){spawnLightning()}
+if(lightning.active){lightning.timer++;lightning.flashAlpha*=0.88;if(lightning.timer>25)lightning.active=false}
+if(shake>0){shake*=.82;if(shake<.3)shake=0}}
+
+// ========== DRAW ==========
+function draw(){
+cx.save();if(shake>0)cx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+const g=cx.createLinearGradient(0,0,0,GY);g.addColorStop(0,P.sky1);g.addColorStop(.6,P.sky3);g.addColorStop(1,P.sky2);cx.fillStyle=g;cx.fillRect(0,0,W,H);
+stars.forEach(s=>{cx.globalAlpha=(Math.sin(s.tw)*.4+.6)*.35;cx.fillStyle='#fff';cx.beginPath();cx.arc(s.x,s.y,s.sz,0,Math.PI*2);cx.fill()});cx.globalAlpha=1;
+// northern lights (aurora) — soft overlapping columns, rounded bottoms
+if(aurora.active&&aurora.alpha>0&&aurora.colors){
+const aa=aurora.alpha;
+const ac=aurora.colors;
+const aTop=GY*0.01;
+const aBot=GY*0.5;
+const rayCount=12;
+const spacing=W/(rayCount-1);
+cx.globalCompositeOperation='lighter';
+for(let i=0;i<rayCount;i++){
+const rShimmer=Math.sin(aurora.phase*1.5+i*0.5)*0.4+Math.sin(aurora.phase*2.3+i*0.8)*0.3+0.55;
+const intensity=aa*rShimmer*0.18;
+if(intensity<0.005)continue;
+const wave=Math.sin(i*0.2+aurora.phase*0.6)*0.3+Math.sin(i*0.1+aurora.phase*0.4)*0.2;
+const rayTop=aTop+wave*25;
+const rayBot=aBot+wave*35+Math.sin(i*0.3+aurora.phase*1.1)*20;
+const xBase=i*spacing+Math.sin(aurora.phase*0.7+i*0.35)*10;
+const colW=spacing*1.6+Math.sin(aurora.phase*0.4+i*0.6)*spacing*0.3;
+const grad=cx.createLinearGradient(xBase,rayTop,xBase,rayBot);
+const t=ac.top,m=ac.mid,b=ac.bot;
+grad.addColorStop(0,`rgba(${t[0]},${t[1]},${t[2]},0)`);
+grad.addColorStop(0.08,`rgba(${t[0]},${t[1]},${t[2]},${intensity*0.3})`);
+grad.addColorStop(0.25,`rgba(${m[0]},${m[1]},${m[2]},${intensity*0.7})`);
+grad.addColorStop(0.5,`rgba(${b[0]},${b[1]},${b[2]},${intensity})`);
+grad.addColorStop(0.75,`rgba(${b[0]},${b[1]},${b[2]},${intensity*0.5})`);
+grad.addColorStop(1,`rgba(${b[0]},${b[1]},${b[2]},0)`);
+cx.fillStyle=grad;
+// soft rounded column shape
+cx.beginPath();
+cx.ellipse(xBase,rayTop,colW/2,8,0,Math.PI,0);
+cx.lineTo(xBase+colW/2,rayBot-colW*0.3);
+cx.ellipse(xBase,rayBot-colW*0.3,colW/2,colW*0.3,0,0,Math.PI);
+cx.closePath();cx.fill()}
+cx.globalCompositeOperation='source-over'}
+mts.forEach(m=>{cx.fillStyle=m.l===0?P.mt1:P.mt2;cx.beginPath();cx.moveTo(m.x-m.w/2,GY);cx.lineTo(m.x,GY-m.h);cx.lineTo(m.x+m.w/2,GY);cx.fill();cx.fillStyle='rgba(255,255,255,0.04)';cx.beginPath();cx.moveTo(m.x-m.w*.08,GY-m.h*.7);cx.lineTo(m.x,GY-m.h);cx.lineTo(m.x+m.w*.08,GY-m.h*.7);cx.fill()});
+// blackhole (Interstellar — simple, proportional, continuous ring)
+if(blackhole.active&&blackhole.size>0){
+const bx=blackhole.x,by=blackhole.y,bs=blackhole.size;
+const br=42*bs;
+cx.save();cx.translate(bx,by);cx.globalAlpha=bs*0.9;
+// back accretion disk — thicker, brighter
+for(let d=4;d>=1;d--){
+const dw=br*(1.3+d*0.4),dh=br*(0.1+d*0.03);
+const da=Math.min(0.4,0.1*bs*d/2.5);
+cx.strokeStyle=`rgba(255,${238-d*4},${215-d*8},${da})`;
+cx.lineWidth=(1.5+d*1)*bs;
+cx.beginPath();cx.ellipse(0,0,dw,dh,0,Math.PI*0.95,Math.PI*2.05);cx.stroke()}
+// lensing ring — thicker, brighter
+for(let r=0;r<5;r++){
+const rr=br*(1.02+r*0.045);
+const bright=Math.pow((5-r)/5,1.2);
+cx.strokeStyle=`rgba(255,${242-r*3},${225-r*5},${0.55*bright*bs})`;
+cx.lineWidth=Math.max(0.8,(3.5-r*0.5)*bs);
+cx.beginPath();cx.ellipse(0,0,rr,rr*1.15,0,0,Math.PI*2);cx.stroke()}
+// event horizon
+cx.fillStyle='#050508';cx.beginPath();cx.arc(0,0,br,0,Math.PI*2);cx.fill();
+// photon ring — thicker
+cx.strokeStyle=`rgba(255,248,240,${0.55*bs})`;cx.lineWidth=2*bs;
+cx.beginPath();cx.arc(0,0,br*1.01,0,Math.PI*2);cx.stroke();
+// front accretion disk — brighter, thicker
+for(let d=4;d>=1;d--){
+const dw=br*(1.3+d*0.4),dh=br*(0.1+d*0.03);
+const da=Math.min(0.55,0.14*bs*d/2.5);
+cx.strokeStyle=`rgba(255,${242-d*3},${220-d*7},${da})`;
+cx.lineWidth=(1.8+d*1.1)*bs;
+cx.beginPath();cx.ellipse(0,0,dw,dh,0,-0.05,Math.PI*1.05);cx.stroke()}
+// doppler — left brighter
+cx.fillStyle=`rgba(255,245,235,${0.15*bs})`;
+cx.beginPath();cx.ellipse(-br*1.8,0,6*bs,2*bs,0,0,Math.PI*2);cx.fill();
+cx.restore();cx.globalAlpha=1}
+// shooting stars
+shootingStars.forEach(s=>{
+const fade=s.life<0.3?s.life/0.3:s.life>0.8?(1-s.life)/0.2:1;
+const a=fade*s.bright;
+const dx=-s.vx/Math.sqrt(s.vx*s.vx+s.vy*s.vy);
+const dy=-s.vy/Math.sqrt(s.vx*s.vx+s.vy*s.vy);
+const tailLen=s.len;
+// tapered tail — draw segments from tip to end, fading out
+const segs=12;
+for(let j=0;j<segs;j++){
+const t0=j/segs,t1=(j+1)/segs;
+const x0=s.x+dx*tailLen*t0,y0=s.y+dy*tailLen*t0;
+const x1=s.x+dx*tailLen*t1,y1=s.y+dy*tailLen*t1;
+const segA=a*(1-t0*0.95);
+const w=2.5*(1-t0*0.85);
+cx.strokeStyle=`rgba(220,240,255,${segA})`;
+cx.lineWidth=w;cx.lineCap='round';
+cx.beginPath();cx.moveTo(x0,y0);cx.lineTo(x1,y1);cx.stroke();
+// cyan inner glow on first half
+if(j<segs/2){
+cx.strokeStyle=`rgba(92,225,230,${segA*0.4})`;
+cx.lineWidth=w*2.5;
+cx.beginPath();cx.moveTo(x0,y0);cx.lineTo(x1,y1);cx.stroke()}}
+// sparkle dots along trail
+for(let j=0;j<5;j++){
+const t=0.1+j*0.18+Math.sin(s.life*20+j)*0.03;
+const sx2=s.x+dx*tailLen*t+(Math.sin(s.life*30+j*7))*2;
+const sy2=s.y+dy*tailLen*t+(Math.cos(s.life*30+j*5))*2;
+const da=a*(1-t)*0.6;
+const ds=1.2-t*0.8;
+cx.fillStyle=`rgba(255,255,255,${da})`;
+cx.beginPath();cx.arc(sx2,sy2,ds,0,Math.PI*2);cx.fill()}
+// bright head glow
+cx.fillStyle=`rgba(220,240,255,${a*0.25})`;
+cx.beginPath();cx.arc(s.x,s.y,6,0,Math.PI*2);cx.fill();
+cx.fillStyle=`rgba(92,225,230,${a*0.15})`;
+cx.beginPath();cx.arc(s.x,s.y,10,0,Math.PI*2);cx.fill();
+cx.fillStyle=`rgba(255,255,255,${a*0.9})`;
+cx.beginPath();cx.arc(s.x,s.y,2,0,Math.PI*2);cx.fill()});
+// stellar rocket easter egg
+if(rocket.active){
+const rx=rocket.x,ry=rocket.y;
+const ra=Math.min(1,rocket.timer<60?rocket.timer/60:rocket.x<50?(rocket.x+30)/80:1)*0.7;
+const rSlope=Math.sin(rocket.timer*0.012)*3.5+Math.sin(rocket.timer*0.007)*1.5;
+const rAngle=-0.25+rSlope*0.015;
+cx.globalAlpha=ra;cx.save();cx.translate(rx,ry);cx.rotate(rAngle);
+// exhaust trail — long glowing tail behind rocket
+const ef=Math.sin(rocket.timer*0.5)*0.3+0.7;
+// outer glow trail (wide, faint)
+cx.fillStyle=`rgba(255,200,80,${0.06*ef})`;
+cx.beginPath();cx.moveTo(-12,-6);cx.lineTo(-65-Math.random()*10,0);cx.lineTo(-12,6);cx.closePath();cx.fill();
+// mid trail (medium, brighter)
+cx.fillStyle=`rgba(255,160,40,${0.15*ef})`;
+cx.beginPath();cx.moveTo(-12,-4);cx.lineTo(-50-Math.random()*8,0);cx.lineTo(-12,4);cx.closePath();cx.fill();
+// inner trail (narrow, bright)
+cx.fillStyle=`rgba(255,220,100,${0.3*ef})`;
+cx.beginPath();cx.moveTo(-12,-2.5);cx.lineTo(-35-Math.random()*6,0);cx.lineTo(-12,2.5);cx.closePath();cx.fill();
+// core flame (brightest)
+cx.fillStyle=`rgba(255,255,200,${0.5*ef})`;
+cx.beginPath();cx.moveTo(-12,-1.5);cx.lineTo(-22-Math.random()*4,0);cx.lineTo(-12,1.5);cx.closePath();cx.fill();
+// teal accent in flame
+cx.fillStyle=`rgba(92,225,230,${0.2*ef})`;
+cx.beginPath();cx.moveTo(-14,-1);cx.lineTo(-28-Math.random()*5,0);cx.lineTo(-14,1);cx.closePath();cx.fill();
+// spark dots scattered behind
+for(let sp=0;sp<4;sp++){
+const sdx=-15-Math.random()*40;
+const sdy=(Math.random()-0.5)*8;
+const sa=0.3+Math.random()*0.3;
+cx.fillStyle=`rgba(255,200,80,${sa*ef})`;
+cx.beginPath();cx.arc(sdx,sdy,0.8+Math.random()*0.8,0,Math.PI*2);cx.fill()}
+// body (brighter)
+cx.fillStyle='#d8dfe8';cx.beginPath();cx.ellipse(0,0,13,5.5,0,0,Math.PI*2);cx.fill();
+// body highlight
+cx.fillStyle='rgba(255,255,255,0.3)';cx.beginPath();cx.ellipse(2,-2,8,2,0,0,Math.PI*2);cx.fill();
+// nose cone (teal)
+cx.fillStyle='#5eead4';cx.beginPath();cx.moveTo(13,-3.5);cx.lineTo(20,0);cx.lineTo(13,3.5);cx.closePath();cx.fill();
+// nose highlight
+cx.fillStyle='rgba(255,255,255,0.25)';cx.beginPath();cx.moveTo(14,-2);cx.lineTo(18,-0.5);cx.lineTo(14,0);cx.closePath();cx.fill();
+// window
+cx.fillStyle='#0d1b2a';cx.beginPath();cx.arc(5,0,2.8,0,Math.PI*2);cx.fill();
+cx.fillStyle='rgba(92,225,230,0.6)';cx.beginPath();cx.arc(4.3,-1,1.2,0,Math.PI*2);cx.fill();
+// fins
+cx.fillStyle='#5eead4';
+cx.beginPath();cx.moveTo(-8,-5);cx.lineTo(-13,-10);cx.lineTo(-10,-5);cx.closePath();cx.fill();
+cx.beginPath();cx.moveTo(-8,5);cx.lineTo(-13,10);cx.lineTo(-10,5);cx.closePath();cx.fill();
+// fin highlights
+cx.fillStyle='rgba(255,255,255,0.15)';
+cx.beginPath();cx.moveTo(-8,-5);cx.lineTo(-11,-8);cx.lineTo(-10,-5);cx.closePath();cx.fill();
+cx.restore();cx.globalAlpha=1}
+cx.fillStyle=P.gnd;cx.fillRect(0,GY,W,H-GY);
+for(let x=-gOff;x<W+24;x+=18){cx.fillStyle='rgba(30,86,49,0.4)';const h=3+Math.sin(x*.3)*2;cx.beginPath();cx.moveTo(x-3,GY);cx.lineTo(x,GY-h);cx.lineTo(x+3,GY);cx.fill()}
+cx.fillStyle=P.gndT;cx.fillRect(0,GY,W,8);cx.fillStyle=P.gndA;cx.fillRect(0,GY,W,2.5);
+cx.strokeStyle='rgba(255,255,255,0.03)';cx.lineWidth=1;for(let x=-gOff;x<W+24;x+=24){cx.beginPath();cx.moveTo(x,GY+8);cx.lineTo(x,H);cx.stroke()}
+pl.tr.forEach(t=>{cx.globalAlpha=t.a;cx.fillStyle=P.body;cx.beginPath();cx.arc(t.x,t.y,Math.max(1,t.s),0,Math.PI*2);cx.fill()});cx.globalAlpha=1;
+obs.forEach(o=>{if(o.t==='d'){const sw=o.w/2-4;drawSpk(o.x,o.y,sw,o.h);drawSpk(o.x+sw+8,o.y,sw,o.h)}else drawSpk(o.x,o.y,o.w,o.h)});
+if(pl.alive)drawPl(pl.x,pl.y);
+parts.forEach(p=>{cx.globalAlpha=p.life;cx.fillStyle=p.c;if(p.sh==='c'){cx.beginPath();cx.arc(p.x,p.y,p.sz/2,0,Math.PI*2);cx.fill()}else{cx.save();cx.translate(p.x,p.y);cx.rotate(p.life*3);cx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz);cx.restore()}});cx.globalAlpha=1;
+if(gameSpd>1.3&&state==='playing'){cx.globalAlpha=Math.min((gameSpd-1.3)*.25,.12);cx.strokeStyle='#fff';cx.lineWidth=1;for(let i=0;i<4;i++){const ly=40+Math.random()*(GY-80),lx=Math.random()*W;cx.beginPath();cx.moveTo(lx,ly);cx.lineTo(lx-15-gameSpd*10,ly);cx.stroke()}cx.globalAlpha=1}
+// lightning flash — gold/yellow stylized
+if(lightning.active&&lightning.flashAlpha>0.01){
+// warm sky flash
+cx.fillStyle=`rgba(255,240,200,${lightning.flashAlpha*0.1})`;
+cx.fillRect(0,0,W,GY);
+// mountain illumination (warm)
+cx.fillStyle=`rgba(255,230,180,${lightning.flashAlpha*0.06})`;
+cx.fillRect(0,GY*0.4,W,GY*0.6);
+// bolt rendering — 4 layers: outer glow → orange → gold → bright core
+lightning.bolts.forEach(b=>{
+const ba=lightning.flashAlpha;
+cx.lineCap='round';cx.lineJoin='round';
+// 1. wide warm glow
+b.pts.forEach((p,i)=>{if(i===0)return;const prev=b.pts[i-1];
+cx.strokeStyle=`rgba(255,180,50,${ba*0.15})`;cx.lineWidth=b.w*6;
+cx.beginPath();cx.moveTo(prev.x,prev.y);cx.lineTo(p.x,p.y);cx.stroke()});
+// 2. orange mid
+b.pts.forEach((p,i)=>{if(i===0)return;const prev=b.pts[i-1];
+cx.strokeStyle=`rgba(255,160,30,${ba*0.4})`;cx.lineWidth=b.w*3;
+cx.beginPath();cx.moveTo(prev.x,prev.y);cx.lineTo(p.x,p.y);cx.stroke()});
+// 3. gold core
+b.pts.forEach((p,i)=>{if(i===0)return;const prev=b.pts[i-1];
+cx.strokeStyle=`rgba(255,215,0,${ba*0.8})`;cx.lineWidth=b.w*1.5;
+cx.beginPath();cx.moveTo(prev.x,prev.y);cx.lineTo(p.x,p.y);cx.stroke()});
+// 4. bright white-yellow center
+b.pts.forEach((p,i)=>{if(i===0)return;const prev=b.pts[i-1];
+cx.strokeStyle=`rgba(255,255,220,${ba*0.9})`;cx.lineWidth=b.w*0.6;
+cx.beginPath();cx.moveTo(prev.x,prev.y);cx.lineTo(p.x,p.y);cx.stroke()})});
+cx.globalAlpha=1}
+cx.restore()}
+
+// confetti on separate overlay canvas (above death screen)
+const cfCv=document.getElementById('confetti-layer');
+const cfCx=cfCv.getContext('2d');
+function rszCf(){cfCv.width=W*DR;cfCv.height=H*DR;cfCv.style.width=W+'px';cfCv.style.height=H+'px';cfCx.setTransform(DR,0,0,DR,0,0)}
+function drawConfetti(){
+cfCx.clearRect(0,0,W,H);
+if(confetti.length===0)return;
+confetti.forEach(c=>{
+cfCx.globalAlpha=c.life;cfCx.fillStyle=c.color;
+cfCx.save();cfCx.translate(c.x,c.y);cfCx.rotate(c.rot);
+cfCx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
+cfCx.restore()});cfCx.globalAlpha=1}
+
+let cpvT=0,cpvBk=false,cpvBkT=0;
+function drawCPV(){
+const c2=document.getElementById('cpv').getContext('2d');
+c2.clearRect(0,0,300,300);
+cpvT++;
+// mouth: opens at top of bounce (sin peak), closes at bottom
+const bounce=Math.sin(cpvT*0.0873);// matches CSS 1.2s bounce (2PI/72frames)
+const mo=Math.max(0,bounce)*0.8;
+// random blink
+cpvBkT++;
+if(cpvBkT>180+Math.random()*120){cpvBk=true;cpvBkT=-10}
+if(cpvBkT===0)cpvBk=false;
+drawChar(150,140,60,c2,{eyeY:4,mo,bk:cpvBk})}
+function loop(){pl.x=PX;update();
+// animate bg even when not playing
+if(state!=='playing'){
+stars.forEach(s=>{s.tw+=s.ts});
+if(Math.random()<0.0005){spawnStar('normal')}
+for(let i=shootingStars.length-1;i>=0;i--){const s=shootingStars[i];s.x+=s.vx;s.y+=s.vy;s.life-=0.008;if(s.life<=0)shootingStars.splice(i,1)}
+// aurora + rocket + blackhole + lightning on all screens — PRODUCTION
+aurora.phase+=0.008;
+rocket.timer++;}
+// aurora: same ultra-rare rate on menu
+if(!aurora.active&&Math.random()<0.000004){aurora.active=true;aurora.timer=0;aurora.alpha=0;aurora.colors=randomAuroraColors();if(state==='playing')sawAurora=true}
+if(aurora.active){aurora.timer++;aurora.alpha=aurora.timer<150?aurora.timer/150:aurora.timer>900?(1050-aurora.timer)/150:1;aurora.phase+=0.01;if(aurora.timer>1050)aurora.active=false}
+// rocket: ~3.5 min
+if(!rocket.active&&Math.random()<0.00008){rocket.active=true;rocket.x=W+20;rocket.y=30+Math.random()*GY*0.2;rocket.timer=0;if(state==='playing')sawRocket=true}
+if(rocket.active){rocket.x-=0.5;const rwy=Math.sin(rocket.timer*0.012)*3.5+Math.sin(rocket.timer*0.007)*1.5;rocket.y+=rwy*0.02;rocket.timer++;if(rocket.x<-30)rocket.active=false}
+// blackhole: ultra rare
+if(!blackhole.active&&Math.random()<0.000005){blackhole.active=true;blackhole.x=W+80;blackhole.y=GY*0.15+Math.random()*GY*0.2;blackhole.timer=0;blackhole.rot=0;blackhole.size=0;if(state==='playing')sawBlackhole=true}
+if(blackhole.active){blackhole.x-=0.2;blackhole.rot+=0.015;blackhole.timer++;blackhole.size=Math.min(1,blackhole.timer<90?blackhole.timer/90:blackhole.x<60?(blackhole.x+40)/100:1);if(blackhole.x<-100)blackhole.active=false}
+// lightning: ~4.5 min
+if(!lightning.active&&Math.random()<0.00006){spawnLightning()}
+if(lightning.active){lightning.timer++;lightning.flashAlpha*=0.88;if(lightning.timer>25)lightning.active=false}
+// confetti update
+for(let i=confetti.length-1;i>=0;i--){const c=confetti[i];c.x+=c.vx;c.vy+=c.gravity;c.y+=c.vy;c.vx*=0.99;c.rot+=c.rotV;c.life-=c.decay;if(c.life<=0||c.y>H)confetti.splice(i,1)}
+// score count-up
+if(scoreCountUp.active){scoreCountUp.current+=Math.ceil((scoreCountUp.target-scoreCountUp.current)*0.08);if(scoreCountUp.current>=scoreCountUp.target){scoreCountUp.current=scoreCountUp.target;scoreCountUp.active=false}document.getElementById('d-sc').textContent=scoreCountUp.current}
+draw();drawConfetti();if(state==='menu')drawCPV();requestAnimationFrame(loop)}
+initBg();pl.y=GY-pl.h;drawCPV();upB();rszCf();
+function updateUserDisplay(){
+var el=document.getElementById('ss-user');
+if(el)el.textContent=userNickname?('Playing as '+userNickname+(userWallet?' \u2713':'')):''}
+updateUserDisplay();
+loop();
+document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+</script>
+<script type="module">
+// Freighter
+try{
+const mod=await import('https://cdn.jsdelivr.net/npm/@stellar/freighter-api/+esm');
+window._freighter={};
+var def=mod.default||mod;
+if(def&&typeof def==='object'){for(var k in def){if(typeof def[k]==='function')window._freighter[k]=def[k]}}
+console.log('Freighter loaded');
+}catch(e){console.warn('Freighter:',e)}
+
+// Albedo
+try{
+const albMod=await import('https://cdn.jsdelivr.net/npm/@albedo-link/intent/+esm');
+window._albedo=albMod.default||albMod;
+console.log('Albedo loaded');
+}catch(e){console.warn('Albedo:',e)}
+</script>
+</body>
+</html>

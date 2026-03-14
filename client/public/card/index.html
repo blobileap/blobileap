@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic Card — Blobi Leap</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a12;color:#fff;font-family:'Nunito',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.loading{color:#5eead4;font-size:16px}
+.error{color:#ff6b6b;font-size:16px}
+.card-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+canvas{border-radius:16px}
+.info{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 20px;max-width:380px;width:100%;font-size:13px;line-height:1.8}
+.info .label{color:rgba(255,255,255,0.35);font-size:11px}
+.info .value{color:#fff;font-weight:700}
+.info .teal{color:#5eead4}
+.info a{color:#5eead4;text-decoration:none}
+.info a:hover{text-decoration:underline}
+.btn{background:#5eead4;color:#0a0a12;border:none;padding:10px 24px;border-radius:50px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-top:8px}
+.btn:hover{opacity:0.9}
+.back{color:rgba(255,255,255,0.3);font-size:12px;text-decoration:none;margin-top:12px}
+.back:hover{color:#5eead4}
+</style>
+</head><body>
+<div id="root"><div class="loading">Loading card...</div></div>
+<script>
+const P={sky1:'#16213e',sky2:'#0f3460',sky3:'#1a1a2e'};
+function genBolt(x1,y1,x2,y2,depth){var bolts=[];function branch(sx,sy,ex,ey,d,w){var pts=[{x:sx,y:sy}];var segs=4+Math.floor(Math.random()*3);for(var i=1;i<segs;i++){var t=i/segs;var dir=(i%2===0)?1:-1;var mx=sx+(ex-sx)*t+dir*(15+Math.random()*25);var my=sy+(ey-sy)*t+(Math.random()-0.5)*10;pts.push({x:mx,y:my});if(d>0&&Math.random()<0.4){branch(mx,my,mx+dir*(20+Math.random()*30),my+(ey-my)*0.4+Math.random()*20,d-1,w*0.6)}}pts.push({x:ex,y:ey});bolts.push({pts:pts,w:w})}branch(x1,y1,x2,y2,depth,3);return bolts}
+function randomAuroraColors(){var p=[{top:[100,60,200],mid:[60,220,160],bot:[80,255,180]},{top:[200,50,150],mid:[255,80,180],bot:[255,120,200]},{top:[40,60,220],mid:[50,180,255],bot:[80,220,255]},{top:[200,40,60],mid:[255,100,50],bot:[255,160,80]},{top:[80,180,40],mid:[120,255,60],bot:[180,255,80]},{top:[140,40,220],mid:[100,80,255],bot:[140,120,255]},{top:[20,120,140],mid:[30,200,160],bot:[50,255,190]},{top:[220,60,180],mid:[160,80,240],bot:[100,140,255]}];return p[Math.floor(Math.random()*p.length)]}
+function rrp(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath()}
+
+// Seeded random
+function seededRng(seed){var h=0;for(var i=0;i<seed.length;i++){h=((h<<5)-h)+seed.charCodeAt(i);h|=0}return function(){h^=h<<13;h^=h>>17;h^=h<<5;return(h>>>0)/4294967296}}
+
+// Effect renderers (exact game code)
+function rStar(c,ix,iy,iw,ih,rng){
+var stars=[];var count=1+Math.floor(rng()*3);
+for(var s=0;s<count;s++){stars.push({x:ix+iw*(0.3+rng()*0.5),y:iy+ih*(0.15+rng()*0.5),vx:-1.5-rng()*2,vy:0.5+rng()*1.5,life:0.6+rng()*0.3,len:60+rng()*80,bright:0.5+rng()*0.4})}
+stars.forEach(function(s){var fade=s.life<0.3?s.life/0.3:s.life>0.8?(1-s.life)/0.2:1;var a=fade*s.bright;var mag=Math.sqrt(s.vx*s.vx+s.vy*s.vy);var dx=-s.vx/mag,dy=-s.vy/mag;var tl=s.len;
+for(var j=0;j<12;j++){var t0=j/12,t1=(j+1)/12;var segA=a*(1-t0*0.95);var w=2.5*(1-t0*0.85);c.strokeStyle='rgba(220,240,255,'+segA+')';c.lineWidth=w;c.lineCap='round';c.beginPath();c.moveTo(s.x+dx*tl*t0,s.y+dy*tl*t0);c.lineTo(s.x+dx*tl*t1,s.y+dy*tl*t1);c.stroke();if(j<6){c.strokeStyle='rgba(92,225,230,'+(segA*0.4)+')';c.lineWidth=w*2.5;c.beginPath();c.moveTo(s.x+dx*tl*t0,s.y+dy*tl*t0);c.lineTo(s.x+dx*tl*t1,s.y+dy*tl*t1);c.stroke()}}
+for(var j2=0;j2<5;j2++){var t=0.1+j2*0.18;c.fillStyle='rgba(255,255,255,'+(a*(1-t)*0.6)+')';c.beginPath();c.arc(s.x+dx*tl*t+(rng()-.5)*3,s.y+dy*tl*t+(rng()-.5)*3,1.2-t*0.8,0,Math.PI*2);c.fill()}
+c.fillStyle='rgba(220,240,255,'+(a*0.25)+')';c.beginPath();c.arc(s.x,s.y,6,0,Math.PI*2);c.fill();c.fillStyle='rgba(92,225,230,'+(a*0.15)+')';c.beginPath();c.arc(s.x,s.y,10,0,Math.PI*2);c.fill();c.fillStyle='rgba(255,255,255,'+(a*0.9)+')';c.beginPath();c.arc(s.x,s.y,2,0,Math.PI*2);c.fill()})}
+
+function rBolt(c,ix,iy,iw,ih,rng){
+var bcx=ix+iw*(0.35+rng()*0.3);var bolts=genBolt(bcx,iy+ih*0.12,bcx+(rng()-0.5)*60,iy+ih*0.88,2);
+c.fillStyle='rgba(255,240,200,0.08)';c.fillRect(ix,iy,iw,ih);c.fillStyle='rgba(255,230,180,0.04)';c.fillRect(ix,iy+ih*0.6,iw,ih*0.4);
+var ba=0.9;bolts.forEach(function(b){c.lineCap='round';c.lineJoin='round';
+[[6,'rgba(255,180,50,'+(ba*0.15)+')'],[3,'rgba(255,160,30,'+(ba*0.4)+')'],[1.5,'rgba(255,215,0,'+(ba*0.8)+')'],[0.6,'rgba(255,255,220,'+(ba*0.9)+')']].forEach(function(l){
+b.pts.forEach(function(p,i){if(!i)return;var pv=b.pts[i-1];c.strokeStyle=l[1];c.lineWidth=b.w*l[0];c.beginPath();c.moveTo(pv.x,pv.y);c.lineTo(p.x,p.y);c.stroke()})})})}
+
+function rShip(c,ix,iy,iw,ih,rng){
+var rx=ix+iw*0.55,ry=iy+ih*(0.35+rng()*0.3);c.globalAlpha=0.7;c.save();c.translate(rx,ry);c.rotate(-0.1-rng()*0.15);var s=2.5;c.scale(s,s);
+var ef=0.8;c.fillStyle='rgba(255,200,80,'+(0.06*ef)+')';c.beginPath();c.moveTo(-12,-6);c.lineTo(-65,0);c.lineTo(-12,6);c.closePath();c.fill();
+c.fillStyle='rgba(255,160,40,'+(0.15*ef)+')';c.beginPath();c.moveTo(-12,-4);c.lineTo(-50,0);c.lineTo(-12,4);c.closePath();c.fill();
+c.fillStyle='rgba(255,220,100,'+(0.3*ef)+')';c.beginPath();c.moveTo(-12,-2.5);c.lineTo(-35,0);c.lineTo(-12,2.5);c.closePath();c.fill();
+c.fillStyle='rgba(255,255,200,'+(0.5*ef)+')';c.beginPath();c.moveTo(-12,-1.5);c.lineTo(-22,0);c.lineTo(-12,1.5);c.closePath();c.fill();
+c.fillStyle='rgba(92,225,230,'+(0.2*ef)+')';c.beginPath();c.moveTo(-14,-1);c.lineTo(-28,0);c.lineTo(-14,1);c.closePath();c.fill();
+for(var sp=0;sp<4;sp++){c.fillStyle='rgba(255,200,80,'+(0.3+rng()*0.3)+')';c.beginPath();c.arc(-15-rng()*40,(rng()-0.5)*8,0.8+rng()*0.8,0,Math.PI*2);c.fill()}
+c.fillStyle='#d8dfe8';c.beginPath();c.ellipse(0,0,13,5.5,0,0,Math.PI*2);c.fill();c.fillStyle='rgba(255,255,255,0.3)';c.beginPath();c.ellipse(2,-2,8,2,0,0,Math.PI*2);c.fill();
+c.fillStyle='#5eead4';c.beginPath();c.moveTo(13,-3.5);c.lineTo(20,0);c.lineTo(13,3.5);c.closePath();c.fill();c.fillStyle='#0d1b2a';c.beginPath();c.arc(5,0,2.8,0,Math.PI*2);c.fill();
+c.fillStyle='rgba(92,225,230,0.6)';c.beginPath();c.arc(4.3,-1,1.2,0,Math.PI*2);c.fill();
+c.fillStyle='#5eead4';c.beginPath();c.moveTo(-8,-5);c.lineTo(-13,-10);c.lineTo(-10,-5);c.closePath();c.fill();c.beginPath();c.moveTo(-8,5);c.lineTo(-13,10);c.lineTo(-10,5);c.closePath();c.fill();
+c.restore();c.globalAlpha=1}
+
+function rVoid(c,ix,iy,iw,ih,rng){
+var bx=ix+iw/2,by=iy+ih/2,br=45+rng()*15;c.save();c.translate(bx,by);c.globalAlpha=0.9;
+for(var d=4;d>=1;d--){var dw=br*(1.3+d*0.4),dh=br*(0.1+d*0.03);c.strokeStyle='rgba(255,'+(238-d*4)+','+(215-d*8)+','+(Math.min(0.4,0.1*d/2.5))+')';c.lineWidth=1.5+d;c.beginPath();c.ellipse(0,0,dw,dh,0,Math.PI*0.95,Math.PI*2.05);c.stroke()}
+for(var r=0;r<5;r++){var rr=br*(1.02+r*0.045);var bright=Math.pow((5-r)/5,1.2);c.strokeStyle='rgba(255,'+(242-r*3)+','+(225-r*5)+','+(0.55*bright)+')';c.lineWidth=Math.max(0.8,3.5-r*0.5);c.beginPath();c.ellipse(0,0,rr,rr*1.15,0,0,Math.PI*2);c.stroke()}
+c.fillStyle='#050508';c.beginPath();c.arc(0,0,br,0,Math.PI*2);c.fill();
+c.strokeStyle='rgba(255,248,240,0.55)';c.lineWidth=2;c.beginPath();c.arc(0,0,br*1.01,0,Math.PI*2);c.stroke();
+for(var d2=4;d2>=1;d2--){var dw2=br*(1.3+d2*0.4),dh2=br*(0.1+d2*0.03);c.strokeStyle='rgba(255,'+(242-d2*3)+','+(220-d2*7)+','+(Math.min(0.55,0.14*d2/2.5))+')';c.lineWidth=1.8+d2*1.1;c.beginPath();c.ellipse(0,0,dw2,dh2,0,-0.05,Math.PI*1.05);c.stroke()}
+c.fillStyle='rgba(255,245,235,0.15)';c.beginPath();c.ellipse(-br*1.8,0,6,2,0,0,Math.PI*2);c.fill();
+c.restore();c.globalAlpha=1}
+
+function rAura(c,ix,iy,iw,ih,rng){
+var pals=[{top:[100,60,200],mid:[60,220,160],bot:[80,255,180]},{top:[200,50,150],mid:[255,80,180],bot:[255,120,200]},{top:[40,60,220],mid:[50,180,255],bot:[80,220,255]},{top:[200,40,60],mid:[255,100,50],bot:[255,160,80]},{top:[80,180,40],mid:[120,255,60],bot:[180,255,80]},{top:[140,40,220],mid:[100,80,255],bot:[140,120,255]},{top:[20,120,140],mid:[30,200,160],bot:[50,255,190]},{top:[220,60,180],mid:[160,80,240],bot:[100,140,255]}];
+var ac=pals[Math.floor(rng()*pals.length)];
+var aTop=iy+10,aBot=iy+ih-10,rayCount=12,spacing=iw/(rayCount-1),phase=rng()*6;
+c.globalCompositeOperation='lighter';
+for(var i=0;i<rayCount;i++){var rS=Math.sin(phase*1.5+i*0.5)*0.4+Math.sin(phase*2.3+i*0.8)*0.3+0.55;var intensity=0.85*rS*0.18;if(intensity<0.005)continue;
+var wave=Math.sin(i*0.2+phase*0.6)*0.3+Math.sin(i*0.1+phase*0.4)*0.2;var rayTop=aTop+wave*25;var rayBot=aBot+wave*35+Math.sin(i*0.3+phase*1.1)*20;
+var xBase=ix+i*spacing+Math.sin(phase*0.7+i*0.35)*10;var colW=spacing*1.6+Math.sin(phase*0.4+i*0.6)*spacing*0.3;
+var grad=c.createLinearGradient(xBase,rayTop,xBase,rayBot);var t=ac.top,m=ac.mid,b=ac.bot;
+grad.addColorStop(0,'rgba('+t[0]+','+t[1]+','+t[2]+',0)');grad.addColorStop(0.08,'rgba('+t[0]+','+t[1]+','+t[2]+','+(intensity*0.3)+')');
+grad.addColorStop(0.25,'rgba('+m[0]+','+m[1]+','+m[2]+','+(intensity*0.7)+')');grad.addColorStop(0.5,'rgba('+b[0]+','+b[1]+','+b[2]+','+intensity+')');
+grad.addColorStop(0.75,'rgba('+b[0]+','+b[1]+','+b[2]+','+(intensity*0.5)+')');grad.addColorStop(1,'rgba('+b[0]+','+b[1]+','+b[2]+',0)');
+c.fillStyle=grad;c.beginPath();c.ellipse(xBase,rayTop,colW/2,8,0,Math.PI,0);c.lineTo(xBase+colW/2,rayBot-colW*0.3);c.ellipse(xBase,rayBot-colW*0.3,colW/2,colW*0.3,0,0,Math.PI);c.closePath();c.fill()}
+c.globalCompositeOperation='source-over'}
+
+var EFFECTS={star:{name:'SHOOTING STAR',rc:'#5eead4',brd:'rgba(92,225,230,0.4)',bg1:'#0a1628',bg2:'#0d1f3a',quote:'Make a wish, Blobi.'},
+bolt:{name:'LIGHTNING BOLT',rc:'#ffd700',brd:'rgba(255,215,0,0.4)',bg1:'#1a1508',bg2:'#1a1a0a',quote:'The sky cracked open and whispered Blobi\'s name.'},
+ship:{name:'STELLAR ROCKET',rc:'#5eead4',brd:'rgba(94,234,212,0.4)',bg1:'#0a1a18',bg2:'#0d2420',quote:'Built different. Built on Stellar.'},
+void:{name:'BLACK HOLE',rc:'#ffcc66',brd:'rgba(255,200,100,0.35)',bg1:'#050508',bg2:'#0a0a14',quote:'Blobi stared into the void. The void blinked first.'},
+aura:{name:'AURORA BOREALIS',rc:'#50ffb4',brd:'rgba(80,255,180,0.35)',bg1:'#060f08',bg2:'#0a1a0d',quote:'The northern lights danced for Blobi alone.'}};
+
+var RENDERS={star:rStar,bolt:rBolt,ship:rShip,void:rVoid,aura:rAura};
+
+function renderCard(data){
+var cd=EFFECTS[data.effect];if(!cd)return;
+var rng=seededRng(data.seed);
+var cw=480,ch=640,sc=2;
+var cv=document.createElement('canvas');cv.width=cw*sc;cv.height=ch*sc;cv.style.width=Math.min(cw,window.innerWidth-40)+'px';cv.style.height='auto';
+var c=cv.getContext('2d');c.setTransform(sc,0,0,sc,0,0);var R=16;c.save();rrp(c,0,0,cw,ch,R);c.clip();
+var bg=c.createLinearGradient(0,0,0,ch);bg.addColorStop(0,cd.bg2);bg.addColorStop(1,cd.bg1);c.fillStyle=bg;c.fillRect(0,0,cw,ch);
+for(var i=0;i<40;i++){c.fillStyle='rgba(255,255,255,'+(rng()*0.12+0.03)+')';c.beginPath();c.arc(rng()*cw,rng()*ch*0.55,rng()*1.2+0.3,0,Math.PI*2);c.fill()}
+c.strokeStyle=cd.brd;c.lineWidth=4;rrp(c,3,3,cw-6,ch-6,R-1);c.stroke();c.strokeStyle=cd.rc;c.lineWidth=1.5;rrp(c,5,5,cw-10,ch-10,R-2);c.stroke();
+// Name
+c.textAlign='left';c.textBaseline='top';c.font='900 22px Nunito,sans-serif';c.fillStyle='#fff';c.fillText(cd.name,24,20);
+// Rarity badge
+c.font='700 11px Nunito,sans-serif';var rtw=c.measureText(data.rarity).width+16;rrp(c,cw-rtw-20,18,rtw,24,12);c.fillStyle=cd.rc+'22';c.fill();c.strokeStyle=cd.rc+'55';c.lineWidth=1;c.stroke();c.textAlign='center';c.textBaseline='middle';c.fillStyle=cd.rc;c.fillText(data.rarity,cw-rtw/2-20,30);
+// Card number
+c.textAlign='left';c.textBaseline='top';c.font='700 12px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.2)';
+c.fillText('#'+data.number+' / '+data.totalSupply+'  |  Season '+data.season,26,46);
+// GENESIS badge
+c.font='700 10px Nunito,sans-serif';var gtw=c.measureText('GENESIS').width+14;
+rrp(c,24,64,gtw,20,10);c.fillStyle='rgba(255,215,0,0.1)';c.fill();c.strokeStyle='rgba(255,215,0,0.3)';c.lineWidth=0.5;c.stroke();
+c.textAlign='center';c.textBaseline='middle';c.fillStyle='#ffd700';c.fillText('GENESIS',24+gtw/2,74);
+// Effect area
+var ix=20,iy=92,iw=cw-40,ih=340;
+var skyG=c.createLinearGradient(0,iy,0,iy+ih);skyG.addColorStop(0,P.sky1);skyG.addColorStop(0.6,P.sky3);skyG.addColorStop(1,P.sky2);c.fillStyle=skyG;c.fillRect(ix,iy,iw,ih);
+for(var s=0;s<20;s++){c.fillStyle='rgba(255,255,255,'+(rng()*0.3+0.1)+')';c.beginPath();c.arc(ix+rng()*iw,iy+rng()*ih*0.7,rng()+0.5,0,Math.PI*2);c.fill()}
+c.save();c.beginPath();c.rect(ix,iy,iw,ih);c.clip();
+RENDERS[data.effect](c,ix,iy,iw,ih,rng);
+c.restore();
+var f=40;var vl=c.createLinearGradient(ix,0,ix+f,0);vl.addColorStop(0,cd.bg2);vl.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=vl;c.fillRect(ix,iy,f,ih);
+var vr=c.createLinearGradient(ix+iw-f,0,ix+iw,0);vr.addColorStop(0,'rgba(0,0,0,0)');vr.addColorStop(1,cd.bg1);c.fillStyle=vr;c.fillRect(ix+iw-f,iy,f,ih);
+var vt=c.createLinearGradient(0,iy,0,iy+f);vt.addColorStop(0,cd.bg2);vt.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=vt;c.fillRect(ix,iy,iw,f);
+var vb=c.createLinearGradient(0,iy+ih-f,0,iy+ih);vb.addColorStop(0,'rgba(0,0,0,0)');vb.addColorStop(1,cd.bg1);c.fillStyle=vb;c.fillRect(ix,iy+ih-f,iw,f);
+// Separator
+c.strokeStyle='rgba(255,255,255,0.06)';c.lineWidth=1;c.beginPath();c.moveTo(30,iy+ih+8);c.lineTo(cw-30,iy+ih+8);c.stroke();
+// Quote
+var qY=iy+ih+20;c.font='italic 14px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.2)';c.textAlign='center';
+c.fillText('\u201C'+cd.quote+'\u201D',cw/2,qY);
+// Owner
+var oY=qY+28;c.textAlign='center';c.textBaseline='top';
+if(data.owner){
+c.font='800 16px Nunito,sans-serif';c.fillStyle='#5eead4';c.fillText('@'+data.owner,cw/2,oY);
+if(data.wallet){var ws=data.wallet.substring(0,4)+'...'+data.wallet.substring(data.wallet.length-4);c.font='600 11px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.25)';c.fillText(ws,cw/2,oY+22)}
+}else{c.font='700 14px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.15)';c.fillText('Unclaimed',cw/2,oY)}
+// Seed
+var seedY=oY+(data.wallet?44:24);c.font='600 10px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.1)';c.fillText('Seed: '+data.seed,cw/2,seedY);
+// Bottom bar
+c.fillStyle='rgba(0,0,0,0.35)';c.fillRect(0,ch-55,cw,55);c.textAlign='left';c.textBaseline='top';c.font='800 16px Nunito,sans-serif';c.fillStyle='#5eead4';c.fillText('BLOBI LEAP',22,ch-42);
+c.font='600 9px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.2)';c.fillText('Built on Stellar',22,ch-22);c.textAlign='right';c.font='800 13px Nunito,sans-serif';c.fillStyle='#ffd700';c.fillText('blobileap.com',cw-22,ch-42);
+c.font='600 9px Nunito,sans-serif';c.fillStyle='rgba(255,255,255,0.2)';c.fillText('Cosmic Collection',cw-22,ch-22);
+c.restore();return cv}
+
+// Fetch card data from API
+async function init(){
+var path=window.location.pathname;
+var cardId=path.split('/').pop().toUpperCase();
+if(!cardId||cardId==='CARD'){document.getElementById('root').innerHTML='<div class="error">No card ID. Try /card/VOID-S1-0001</div>';return}
+try{
+var res=await fetch('/api/cards/'+cardId);
+if(!res.ok){document.getElementById('root').innerHTML='<div class="error">Card not found: '+cardId+'</div>';return}
+var data=await res.json();
+var wrap=document.createElement('div');wrap.className='card-wrap';
+var cv=renderCard(data);wrap.appendChild(cv);
+// Info box
+var info=document.createElement('div');info.className='info';
+info.innerHTML='<span class="label">Card</span> <span class="value">'+data.id+'</span><br>'+
+'<span class="label">Rarity</span> <span class="value">'+data.rarity+'</span> ('+data.totalSupply+' total)<br>'+
+'<span class="label">Owner</span> <span class="value '+(data.owner?'teal':'')+'">'+( data.owner?'@'+data.owner:'Unclaimed')+'</span><br>'+
+(data.wallet?'<span class="label">Wallet</span> <a href="https://stellar.expert/explorer/public/account/'+data.wallet+'">'+data.wallet.substring(0,8)+'...'+data.wallet.substring(data.wallet.length-4)+'</a><br>':'')+
+'<span class="label">Seed</span> <span class="value">'+data.seed+'</span><br>'+
+'<span class="label">Minted</span> <span class="value">'+new Date(data.mintedAt).toLocaleDateString()+' via '+data.mintType+'</span>';
+wrap.appendChild(info);
+// Download button
+var btn=document.createElement('button');btn.className='btn';btn.textContent='Download Card PNG';
+btn.onclick=function(){var a=document.createElement('a');a.download=data.id+'.png';a.href=cv.toDataURL('image/png');a.click()};
+wrap.appendChild(btn);
+var back=document.createElement('a');back.className='back';back.href='https://blobileap.com';back.textContent='\u2190 Back to Blobi Leap';
+wrap.appendChild(back);
+document.getElementById('root').innerHTML='';document.getElementById('root').appendChild(wrap);
+}catch(e){document.getElementById('root').innerHTML='<div class="error">Error loading card</div>';console.error(e)}}
+init();
+</script></body></html>
