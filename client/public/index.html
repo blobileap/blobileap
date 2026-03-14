@@ -1213,7 +1213,7 @@ if(aurora.active){aurora.timer++;aurora.alpha=aurora.timer<150?aurora.timer/150:
 // rocket: ~3.5 min avg
 if(!rocket.active&&Math.random()<0.00008){rocket.active=true;rocket.x=W+20;rocket.y=30+Math.random()*GY*0.2;rocket.timer=0;sawRocket=true}
 if(rocket.active){rocket.x-=0.5;const rwy=Math.sin(rocket.timer*0.012)*3.5+Math.sin(rocket.timer*0.007)*1.5;rocket.y+=rwy*0.02;rocket.timer++;if(rocket.x<-30)rocket.active=false}
-// blackhole: ~1% per game (~huyền thoại)
+// blackhole: ~1% per game (~legendary)
 if(!blackhole.active&&Math.random()<0.000005){blackhole.active=true;blackhole.x=W+80;blackhole.y=GY*0.15+Math.random()*GY*0.2;blackhole.timer=0;blackhole.rot=0;blackhole.size=0;sawBlackhole=true}
 if(blackhole.active){blackhole.x-=0.2;blackhole.rot+=0.015;blackhole.timer++;blackhole.size=Math.min(1,blackhole.timer<90?blackhole.timer/90:blackhole.x<60?(blackhole.x+40)/100:1);if(blackhole.x<-100)blackhole.active=false}
 // lightning: ~4.5 min avg
