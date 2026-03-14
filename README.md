@@ -215,7 +215,7 @@ pm2 start ecosystem.config.js
 ## Links
 
 - **Play**: [blobileap.com](https://blobileap.com)
-- **Profile**: [blobileap.com/u/Charlie](https://blobileap.com/u/Charlie)
+- **Profile**: [blobileap.com/u/Trion](https://blobileap.com/u/Trion)
 - **Card Verify**: [blobileap.com/card/VOID-S1-0001](https://blobileap.com/card/VOID-S1-0001)
 - **Token**: [stellar.expert/BLOBI](https://stellar.expert/explorer/public/asset/BLOBI-GDSM5FTQQQDCM5AU6B5FICSCO65IPY5V2KE4TBC6PSWCDGBP3V2BLOBI)
 - **Twitter**: [@blobileap](https://x.com/blobileap)
