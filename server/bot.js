@@ -30,7 +30,7 @@ async function handleCmd(text) {
 if (cmd === '/stats') {
   const users = await pool.query('SELECT COUNT(*) as c FROM users');
   const wallets = await pool.query('SELECT COUNT(*) as c FROM users WHERE wallet_address IS NOT NULL');
-  const today = await pool.query("SELECT COUNT(*) as c FROM scores WHERE created_at > NOW() - INTERVAL '24 hours'");
+  const today = await pool.query("SELECT COUNT(*) as c FROM scores WHERE created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC')");
   const total = await pool.query('SELECT COUNT(*) as c FROM scores');
   const best = await pool.query('SELECT MAX(best_score) as m FROM users');
   return send('📊 <b>Blobi Leap Stats</b>\n\n👥 Players: <b>' + users.rows[0].c + '</b>\n💎 Wallets: <b>' + wallets.rows[0].c + '</b>\n🎮 Games today: <b>' + today.rows[0].c + '</b>\n🎮 Games total: <b>' + total.rows[0].c + '</b>\n🏆 Highest score: <b>' + (best.rows[0].m || 0) + '</b>');
@@ -45,8 +45,8 @@ if (cmd === '/top') {
 }
 
 if (cmd === '/today') {
-  const cnt = await pool.query("SELECT COUNT(*) as c FROM scores WHERE created_at > NOW() - INTERVAL '24 hours'");
-  const r = await pool.query("SELECT u.nickname, MAX(s.score) as best, u.wallet_address IS NOT NULL as hw FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at > NOW() - INTERVAL '24 hours' GROUP BY u.id, u.nickname, u.wallet_address ORDER BY best DESC LIMIT 10");
+  const cnt = await pool.query("SELECT COUNT(*) as c FROM scores WHERE created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC')");
+  const r = await pool.query("SELECT u.nickname, MAX(s.score) as best, u.wallet_address IS NOT NULL as hw FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC') GROUP BY u.id, u.nickname, u.wallet_address ORDER BY best DESC LIMIT 10");
   let msg = '📅 <b>Today</b> (' + cnt.rows[0].c + ' games)\n\n';
   if (!r.rows.length) msg += 'No scores yet today.';
   else r.rows.forEach((row, i) => { msg += (i < 3 ? ['🥇','🥈','🥉'][i] : (i+1)+'.') + ' ' + row.nickname + ': <b>' + row.best + '</b>' + (row.hw ? ' 💎' : '') + '\n'; });

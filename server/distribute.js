@@ -7,9 +7,12 @@ const server = new StellarSdk.Horizon.Server('https://horizon.stellar.org');
 
 const REWARDS = [300, 200, 150, 100, 100, 50, 50, 50, 50, 50];
 
-async function getWeeklyTop() {
+const CURRENT_WEEK_SQL = "s.created_at >= DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC' + INTERVAL '1 day') - INTERVAL '1 day'";
+const LAST_WEEK_SQL = "s.created_at >= DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC' + INTERVAL '1 day') - INTERVAL '8 days' AND s.created_at < DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC' + INTERVAL '1 day') - INTERVAL '1 day'";
+
+async function getTop(weekFilter) {
   const r = await pool.query(
-    'SELECT u.id, u.nickname, u.wallet_address, MAX(s.score) as best FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at >= DATE_TRUNC(\'week\', NOW() AT TIME ZONE \'UTC\' + INTERVAL \'1 day\') - INTERVAL \'1 day\' AND u.wallet_address IS NOT NULL GROUP BY u.id ORDER BY best DESC'
+    'SELECT u.id, u.nickname, u.wallet_address, MAX(s.score) as best FROM scores s JOIN users u ON s.user_id = u.id WHERE ' + weekFilter + ' AND u.wallet_address IS NOT NULL GROUP BY u.id ORDER BY best DESC'
   );
   return r.rows;
 }
@@ -30,13 +33,14 @@ async function getHotBalance() {
 }
 
 async function previewRewards() {
-  const top = await getWeeklyTop();
-  const balance = await getHotBalance();
-  const eligible = [];
-  const skipped = [];
+  var top = await getTop(CURRENT_WEEK_SQL);
+  var balance = await getHotBalance();
+  var eligible = [];
+  var skipped = [];
 
-  for (const player of top) {
-    const hasTL = await checkTrustline(player.wallet_address);
+  for (var i = 0; i < top.length; i++) {
+    var player = top[i];
+    var hasTL = await checkTrustline(player.wallet_address);
     if (hasTL && eligible.length < 10) {
       eligible.push({
         rank: eligible.length + 1,
@@ -55,22 +59,23 @@ async function previewRewards() {
     }
   }
 
-  const totalNeeded = eligible.reduce(function(sum, p) { return sum + p.amount; }, 0);
-  return { eligible, skipped, totalNeeded, hotBalance: balance };
+  var totalNeeded = eligible.reduce(function(sum, p) { return sum + p.amount; }, 0);
+  return { eligible: eligible, skipped: skipped, totalNeeded: totalNeeded, hotBalance: balance };
 }
 
 async function sendRewards() {
-  const hotSecret = process.env.HOT_WALLET_SECRET;
+  var hotSecret = process.env.HOT_WALLET_SECRET;
   if (!hotSecret) throw new Error('HOT_WALLET_SECRET not set');
 
-  const hotKeypair = StellarSdk.Keypair.fromSecret(hotSecret);
-  const top = await getWeeklyTop();
-  const results = [];
-  let rewardIdx = 0;
+  var hotKeypair = StellarSdk.Keypair.fromSecret(hotSecret);
+  var top = await getTop(LAST_WEEK_SQL);
+  var results = [];
+  var rewardIdx = 0;
 
-  for (const player of top) {
+  for (var i = 0; i < top.length; i++) {
     if (rewardIdx >= 10) break;
-    const hasTL = await checkTrustline(player.wallet_address);
+    var player = top[i];
+    var hasTL = await checkTrustline(player.wallet_address);
     if (!hasTL) {
       results.push({ nickname: player.nickname, score: player.best, amount: 0, status: 'skipped (no trustline)' });
       continue;
