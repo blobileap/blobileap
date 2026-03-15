@@ -863,19 +863,33 @@ if(res.rank)console.log('Score submitted, rank:',res.rank);if(res.totalGames)tot
 var rwP=document.getElementById('rw-prompt');
 var rwT=document.getElementById('rw-text');
 var rwS=document.getElementById('rw-sub');
-if(res.weeklyRank&&res.weeklyRank<=10&&res.rewardAmount){
+var wr=res.weeklyRank;
+var ra=res.rewardAmount;
+var rewardTable=[300,200,150,100,100,50,50,50,50,50];
+if(wr&&wr<=20){
 rwP.style.display='block';
 if(!userWallet){
-rwT.textContent='\u{1F3C6} You\'re #'+res.weeklyRank+' this week!';
-rwS.textContent='Connect wallet to claim '+res.rewardAmount+' BLOBI reward';
+rwT.textContent='\u{1F3C6} You\'re #'+wr+' this week!';
+rwS.textContent='Connect wallet to claim BLOBI rewards';
 }else if(!hasTrustline){
-rwT.textContent='\u{1F3C6} You\'re #'+res.weeklyRank+' this week!';
-rwS.textContent='Add BLOBI token to claim '+res.rewardAmount+' BLOBI reward';
+rwT.textContent='\u{1F3C6} You\'re #'+wr+' this week!';
+rwS.textContent='Add BLOBI token to claim BLOBI rewards';
+}else if(wr<=10){
+var nextReward=wr>1?rewardTable[wr-2]:0;
+if(wr===1){
+rwT.textContent='\u{1F3C6} You\'re #1 this week! '+ra+' BLOBI reward this Sunday.';
+rwS.textContent='Keep playing to hold your spot!';
 }else{
-rwT.textContent='\u{1F3C6} You\'re #'+res.weeklyRank+' this week!';
-rwS.textContent=res.rewardAmount+' BLOBI reward coming Sunday!';
+rwT.textContent='\u{1F3C6} You\'re #'+wr+' this week! '+ra+' BLOBI reward this Sunday.';
+rwS.textContent='Climb to #'+(wr-1)+' for '+nextReward+' BLOBI!';
+}
 rwS.style.color='#5eead4';
-}}else{rwP.style.display='none'}}
+}else{
+rwT.textContent='\u{1F4C8} You\'re #'+wr+' this week.';
+rwS.textContent='Reach top 10 to earn 50 BLOBI this Sunday!';
+rwS.style.color='#ffd700';
+}
+}else{rwP.style.display='none'}}
 
 // ========== LEADERBOARD ==========
 let lbPeriod='daily';
