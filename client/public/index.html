@@ -333,7 +333,7 @@ try{
 var xdrRes=await apiCall("POST","/rewards/trustline-xdr",{publicKey:userWallet});
 if(xdrRes.error){btn.textContent=xdrRes.error;setTimeout(function(){btn.disabled=false;btn.textContent="Add BLOBI Token"},2000);return}
 var signed=null;
-var tryOrder=walletMethod==="albedo"?["albedo","freighter","wc"]:walletMethod==="wc"?["wc","freighter","albedo"]:walletMethod==="freighter"?["freighter","albedo","wc"]:[];
+var tryOrder=walletMethod==="albedo"?["albedo","freighter","wc"]:walletMethod==="wc"?["wc","freighter","albedo"]:walletMethod==="freighter"?["freighter","albedo","wc"]:/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)?["wc"]:["freighter","albedo","wc"];
 for(var ti=0;ti<tryOrder.length;ti++){
 if(signed)break;
 if(tryOrder[ti]==="freighter"&&window._freighter&&window._freighter.signTransaction){
@@ -859,7 +859,7 @@ const res=await apiCall('POST','/scores',{
 score,speed:gameSpd,nearMiss:nmTotal,bestCombo:bestCmb,
 survivalTime:survTime,totalLeaps:totLeaps,
 sawStar,sawLightning,sawRocket,sawBlackhole,sawAurora});
-if(res.rank)console.log('Score submitted, rank:',res.rank);
+if(res.rank)console.log('Score submitted, rank:',res.rank);if(res.totalGames)totalG=res.totalGames;if(res.bestScore)best=Math.max(best,res.bestScore);
 var rwP=document.getElementById('rw-prompt');
 var rwT=document.getElementById('rw-text');
 var rwS=document.getElementById('rw-sub');

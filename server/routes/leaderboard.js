@@ -9,8 +9,8 @@ router.get('/:period', apiLimiter, authOptional, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
 
     let tf = '';
-    if (period === 'daily') tf = "AND s.created_at > NOW() - INTERVAL '24 hours'";
-    else if (period === 'weekly') tf = "AND s.created_at > NOW() - INTERVAL '7 days'";
+    if (period === 'daily') tf = "AND s.created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC')";
+    else if (period === 'weekly') tf = "AND s.created_at >= DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC' + INTERVAL '1 day') - INTERVAL '1 day'";
     else if (period !== 'all') return res.status(400).json({ error: 'Invalid period' });
 
     const result = await pool.query(`
@@ -34,8 +34,8 @@ router.get('/:period', apiLimiter, authOptional, async (req, res) => {
     let myRank = null;
     if (req.user) {
       let tf2 = '';
-      if (period === 'daily') tf2 = "AND created_at > NOW() - INTERVAL '24 hours'";
-      else if (period === 'weekly') tf2 = "AND created_at > NOW() - INTERVAL '7 days'";
+      if (period === 'daily') tf2 = "AND created_at >= DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC')";
+      else if (period === 'weekly') tf2 = "AND created_at >= DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC' + INTERVAL '1 day') - INTERVAL '1 day'";
       const myBest = await pool.query(
         `SELECT MAX(score) as best FROM scores WHERE user_id = $1 ${tf2}`, [req.user.id]
       );

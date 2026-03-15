@@ -9,7 +9,7 @@ const REWARDS = [300, 200, 150, 100, 100, 50, 50, 50, 50, 50];
 
 async function getWeeklyTop() {
   const r = await pool.query(
-    'SELECT u.id, u.nickname, u.wallet_address, MAX(s.score) as best FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at > NOW() - INTERVAL \'7 days\' AND u.wallet_address IS NOT NULL GROUP BY u.id ORDER BY best DESC'
+    'SELECT u.id, u.nickname, u.wallet_address, MAX(s.score) as best FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at >= DATE_TRUNC(\'week\', NOW() AT TIME ZONE \'UTC\' + INTERVAL \'1 day\') - INTERVAL \'1 day\' AND u.wallet_address IS NOT NULL GROUP BY u.id ORDER BY best DESC'
   );
   return r.rows;
 }

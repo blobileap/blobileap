@@ -31,13 +31,13 @@ router.post('/', authRequired, async (req, res) => {
       'SELECT COUNT(*)+1 as rank FROM users WHERE best_score > (SELECT best_score FROM users WHERE id=$1)', [req.user.id]
     );
     const weeklyQ = await pool.query(
-      'SELECT rank FROM (SELECT u.id, RANK() OVER (ORDER BY MAX(s.score) DESC) as rank FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at > NOW() - INTERVAL \'7 days\' GROUP BY u.id) t WHERE id = $1',
+      'SELECT rank FROM (SELECT u.id, RANK() OVER (ORDER BY MAX(s.score) DESC) as rank FROM scores s JOIN users u ON s.user_id = u.id WHERE s.created_at > DATE_TRUNC(\'week\', NOW() AT TIME ZONE \'UTC\' + INTERVAL \'1 day\') - INTERVAL \'1 day\' GROUP BY u.id) t WHERE id = $1',
       [req.user.id]
     );
     const weeklyRank = weeklyQ.rows.length ? parseInt(weeklyQ.rows[0].rank) : null;
     const rewardTable = [300, 200, 150, 100, 100, 50, 50, 50, 50, 50];
     const rewardAmount = weeklyRank && weeklyRank <= 10 ? rewardTable[weeklyRank - 1] : 0;
-    res.json({ success: true, rank: rankQ.rows[0].rank, weeklyRank, rewardAmount });
+    var updatedUser = await pool.query("SELECT total_games, best_score FROM users WHERE id=", [req.user.id]); res.json({ success: true, rank: rankQ.rows[0].rank, weeklyRank, rewardAmount, totalGames: parseInt(updatedUser.rows[0].total_games), bestScore: parseInt(updatedUser.rows[0].best_score || 0) });
   } catch (e) {
     console.error('Score error:', e);
     res.status(500).json({ error: 'Server error' });
