@@ -61,3 +61,30 @@ router.post('/trustline-xdr', async (req, res) => {
 });
 
 module.exports = router;
+
+// Reward history for a user
+router.get('/history/:nickname', async (req, res) => {
+  try {
+    const nick = req.params.nickname;
+    const u = await pool.query('SELECT id FROM users WHERE LOWER(nickname) = LOWER($1)', [nick]);
+    if (!u.rows.length) return res.json({ rewards: [] });
+    const r = await pool.query(
+      'SELECT week_start, rank, amount, tx_hash, created_at FROM reward_history WHERE user_id = $1 ORDER BY week_start DESC LIMIT 20',
+      [u.rows[0].id]
+    );
+    res.json({ rewards: r.rows });
+  } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// Public reward history (all users)
+router.get('/history', async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT rh.week_start, rh.rank, rh.amount, rh.tx_hash, u.nickname FROM reward_history rh JOIN users u ON rh.user_id = u.id WHERE rh.week_start >= (SELECT COALESCE(MAX(week_start), NOW()) FROM reward_history) - INTERVAL \'7 days\' ORDER BY rh.week_start DESC, rh.rank ASC'
+    );
+    const stats = await pool.query(
+      'SELECT COUNT(*) as total_rewards, COALESCE(SUM(amount),0) as total_blobi, COUNT(DISTINCT week_start) as total_weeks, COUNT(DISTINCT user_id) as total_players FROM reward_history'
+    );
+    res.json({ rewards: r.rows, stats: stats.rows[0] });
+  } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});

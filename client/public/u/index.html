@@ -3,6 +3,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Player Profile — Blobi Leap</title>
+<meta name="description" content="Player profile on Blobi Leap — a casual runner game built on Stellar.">
+<meta property="og:title" content="Player Profile — Blobi Leap">
+<meta property="og:description" content="View player stats, cosmic card collection, and reward history.">
+<meta property="og:image" content="https://blobileap.com/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blobileap.com/og-image.png">
+<meta name="theme-color" content="#0d1527">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -119,6 +127,25 @@ html+='</a>';
 });
 html+='</div>';}
 html+='</div>';
+
+// Fetch reward history
+try{
+var rhRes=await fetch('/api/rewards/history/'+encodeURIComponent(nick));
+var rhData=await rhRes.json();
+if(rhData.rewards&&rhData.rewards.length>0){
+html+='<div class="section">';
+html+='<div class="section-title">Reward History</div>';
+rhData.rewards.forEach(function(rw){
+var weekDate=new Date(rw.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+var txLink=rw.tx_hash?'<a href="https://stellar.expert/explorer/public/tx/'+rw.tx_hash+'" target="_blank" style="color:#5eead4;text-decoration:none;font-size:11px">View on Stellar \u2197</a>':'';
+html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">';
+html+='<span style="font-size:12px;color:rgba(255,255,255,0.4)">Week of '+weekDate+'</span>';
+html+='<span style="font-size:12px;color:#ffd700;font-weight:700">#'+rw.rank+' — '+rw.amount+' BLOBI</span>';
+html+=' '+txLink;
+html+='</div>';
+});
+html+='</div>';
+}}catch(e){}
 
 html+='<div class="footer"><a href="/">Play Blobi Leap</a></div>';
 

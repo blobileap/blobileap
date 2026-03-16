@@ -12,6 +12,12 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Blobi Leap">
 <meta name="twitter:description" content="A casual runner game built on Stellar. How far can Blobi leap?">
+<meta property="og:image" content="https://blobileap.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="675">
+<meta name="twitter:image" content="https://blobileap.com/og-image.png">
+<meta property="og:site_name" content="Blobi Leap">
+<meta name="theme-color" content="#0d1527">
 <meta name="theme-color" content="#1a1a2e">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%235ce1e6'/><circle cx='50' cy='50' r='32' fill='%2380e8ec'/><circle cx='38' cy='42' r='9' fill='white'/><circle cx='62' cy='42' r='9' fill='white'/><circle cx='41' cy='43' r='5' fill='%231a1a2e'/><circle cx='65' cy='43' r='5' fill='%231a1a2e'/></svg>">
 <style>
@@ -209,6 +215,7 @@ canvas#game{width:100%;height:100%;display:block}
 <div class="lb-tab active" onclick="loadLB('daily')">Today</div>
 <div class="lb-tab" onclick="loadLB('weekly')">Week</div>
 <div class="lb-tab" onclick="loadLB('all')">All Time</div>
+<div class="lb-tab" onclick="loadRewards()">Rewards</div>
 </div>
 <div id="lb-list"></div>
 <div id="lb-myrank" class="lb-myrank"></div>
@@ -701,6 +708,10 @@ if(sawStar&&!claimedCards.star)effects.push('star');
 if(effects.length===0)return;
 pendingClaim=effects[0];
 document.getElementById('cc-title').textContent=EFFECT_ICONS[pendingClaim]+' '+EFFECT_NAMES[pendingClaim]+' Discovered!';
+var ccBtn=document.getElementById('cc-btn');
+ccBtn.textContent='Claim Card';ccBtn.disabled=false;ccBtn.style.background='';ccBtn.style.margin='';ccBtn.style.display='';
+var ccDesc=document.getElementById('cc-desc');if(ccDesc)ccDesc.innerHTML='';
+var laterBtn=ccBtn.parentElement.querySelector('.btn-skip');if(laterBtn)laterBtn.style.display='';
 document.getElementById('cc').style.display='block'}
 
 async function claimCard(){
@@ -728,6 +739,40 @@ document.getElementById('cc-desc').innerHTML='<a href="/card/'+res.id+'" style="
 }catch(e){
 btn.textContent='Error';
 setTimeout(function(){btn.disabled=false;btn.textContent='Claim Card'},2000)}}
+
+async function loadRewards(){
+document.querySelectorAll('.lb-tab').forEach(function(t){t.classList.toggle('active',t.textContent==='Rewards')});
+document.getElementById('lb-list').innerHTML='<div class="lb-empty">Loading...</div>';
+document.getElementById('lb-myrank').textContent='';
+try{
+var res=await fetch('/api/rewards/history');
+var data=await res.json();
+if(!data.rewards||data.rewards.length===0){
+document.getElementById('lb-list').innerHTML='<div class="lb-empty">No rewards distributed yet</div>';return}
+var html='';
+if(data.stats){
+var st=data.stats;
+html+='<div style="text-align:center;padding:8px 0 12px;border-bottom:0.5px solid rgba(255,255,255,0.06);margin-bottom:8px">';
+html+='<span style="font-size:18px;font-weight:900;color:#ffd700">'+parseInt(st.total_blobi).toLocaleString()+'</span>';
+html+=' <span style="font-size:12px;color:rgba(255,255,255,0.3)">BLOBI distributed</span>';
+html+='<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px">'+st.total_weeks+' week'+(st.total_weeks>1?'s':'')+' \u00b7 '+st.total_players+' player'+(st.total_players>1?'s':'')+' rewarded</div>';
+html+='</div>'}
+var currentWeek='';
+data.rewards.forEach(function(rw){
+var weekDate=new Date(rw.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+if(weekDate!==currentWeek){
+currentWeek=weekDate;
+var weekTxs=data.rewards.filter(function(r2){return new Date(r2.week_start).toLocaleDateString('en-US',{month:'short',day:'numeric'})===weekDate});
+var allSameTx=weekTxs.length>1&&weekTxs.every(function(r2){return r2.tx_hash===weekTxs[0].tx_hash})&&weekTxs[0].tx_hash;
+var headerTx=allSameTx?'<a href="https://stellar.expert/explorer/public/tx/'+weekTxs[0].tx_hash+'" target="_blank" style="color:#5eead4;text-decoration:none;font-size:10px" onclick="event.stopPropagation()"> Verify \u2197</a>':'';
+html+='<div style="padding:8px 0 4px;font-size:11px;color:rgba(255,255,255,0.3);font-weight:700">Week of '+weekDate+headerTx+'</div>'}
+var individualTx=(!allSameTx&&rw.tx_hash)?'<a href="https://stellar.expert/explorer/public/tx/'+rw.tx_hash+'" target="_blank" style="color:#5eead4;text-decoration:none;font-size:10px" onclick="event.stopPropagation()">Verify \u2197</a>':'';
+html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">';
+html+='<span style="font-size:13px;color:rgba(255,255,255,0.7)">#'+rw.rank+' '+rw.nickname+'</span>';
+html+='<span style="font-size:12px"><span style="color:#ffd700;font-weight:700">'+rw.amount+' BLOBI</span> '+individualTx+'</span>';
+html+='</div>'});
+document.getElementById('lb-list').innerHTML=html;
+}catch(e){document.getElementById('lb-list').innerHTML='<div class="lb-empty">Could not load</div>'}}
 
 // ========== API HELPERS ==========
 async function apiCall(method,path,body){

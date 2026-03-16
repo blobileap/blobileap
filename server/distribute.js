@@ -69,7 +69,8 @@ async function sendRewards() {
 
   var hotKeypair = StellarSdk.Keypair.fromSecret(hotSecret);
   var top = await getTop(LAST_WEEK_SQL);
-  var results = [];
+  var eligible = [];
+  var skipped = [];
   var rewardIdx = 0;
 
   for (var i = 0; i < top.length; i++) {
@@ -77,37 +78,55 @@ async function sendRewards() {
     var player = top[i];
     var hasTL = await checkTrustline(player.wallet_address);
     if (!hasTL) {
-      results.push({ nickname: player.nickname, score: player.best, amount: 0, status: 'skipped (no trustline)' });
+      skipped.push({ nickname: player.nickname, score: player.best, reason: 'no trustline' });
       continue;
     }
-
-    var amount = String(REWARDS[rewardIdx]);
-    try {
-      var hotAccount = await server.loadAccount(process.env.HOT_WALLET_PUBLIC);
-      var tx = new StellarSdk.TransactionBuilder(hotAccount, {
-        fee: StellarSdk.BASE_FEE,
-        networkPassphrase: StellarSdk.Networks.PUBLIC
-      })
-      .addOperation(StellarSdk.Operation.payment({
-        destination: player.wallet_address,
-        asset: BLOBI,
-        amount: amount
-      }))
-      .setTimeout(60)
-      .build();
-
-      tx.sign(hotKeypair);
-      var submitResult = await server.submitTransaction(tx);
-      results.push({ nickname: player.nickname, rank: rewardIdx + 1, amount: amount, status: 'sent', tx: submitResult.hash });
-      rewardIdx++;
-    } catch (e) {
-      var errMsg = e.response && e.response.data && e.response.data.extras ? JSON.stringify(e.response.data.extras.result_codes) : e.message;
-      results.push({ nickname: player.nickname, amount: amount, status: 'failed: ' + errMsg });
-      rewardIdx++;
-    }
+    eligible.push({ id: player.id, nickname: player.nickname, wallet: player.wallet_address, amount: String(REWARDS[rewardIdx]), rank: rewardIdx + 1 });
+    rewardIdx++;
   }
 
-  return results;
+  if (eligible.length === 0) return { results: [], skipped: skipped, txHash: null };
+
+  try {
+    var hotAccount = await server.loadAccount(process.env.HOT_WALLET_PUBLIC);
+    var builder = new StellarSdk.TransactionBuilder(hotAccount, {
+      fee: String(100 * eligible.length),
+      networkPassphrase: StellarSdk.Networks.PUBLIC
+    });
+
+    eligible.forEach(function(p) {
+      builder.addOperation(StellarSdk.Operation.payment({
+        destination: p.wallet,
+        asset: BLOBI,
+        amount: p.amount
+      }));
+    });
+
+    var tx = builder.setTimeout(120).build();
+    tx.sign(hotKeypair);
+    var submitResult = await server.submitTransaction(tx);
+    var txHash = submitResult.hash;
+
+    // Save all to history
+    for (var j = 0; j < eligible.length; j++) {
+      try {
+        await pool.query(
+          "INSERT INTO reward_history (user_id, week_start, rank, amount, tx_hash) VALUES ($1, DATE_TRUNC('week', NOW() AT TIME ZONE 'UTC' + INTERVAL '1 day') - INTERVAL '8 days', $2, $3, $4)",
+          [eligible[j].id, eligible[j].rank, parseInt(eligible[j].amount), txHash]
+        );
+      } catch(e) { console.warn('History save error:', e.message); }
+    }
+
+    var results = eligible.map(function(p) {
+      return { nickname: p.nickname, rank: p.rank, amount: p.amount, status: 'sent' };
+    });
+
+    return { results: results, skipped: skipped, txHash: txHash };
+
+  } catch (e) {
+    var errMsg = e.response && e.response.data && e.response.data.extras ? JSON.stringify(e.response.data.extras.result_codes) : e.message;
+    return { results: eligible.map(function(p) { return { nickname: p.nickname, amount: p.amount, status: 'failed: ' + errMsg }; }), skipped: skipped, txHash: null };
+  }
 }
 
 module.exports = { previewRewards, sendRewards, getHotBalance };
